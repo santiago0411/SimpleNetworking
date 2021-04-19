@@ -34,13 +34,14 @@ namespace SimpleNetworking.Utils
 
         internal static void CheckLoggerConfig(bool disableLogging)
         {
-            if (log.Logger.Repository.Configured && disableLogging)
+            if (!log.Logger.Repository.Configured)
             {
-                log.Warn("Logger has already been configured and it cannot be disabled.");
+                SetBasicConfig(disableLogging);
                 return;
             }
 
-            SetBasicConfig(disableLogging);
+            if (disableLogging)
+                log.Warn("Logger has already been configured and it might not be disabled.");
         }
     }
 }

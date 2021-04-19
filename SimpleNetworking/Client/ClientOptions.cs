@@ -7,16 +7,22 @@ namespace SimpleNetworking.Client
         /// <summary>The server ip address.</summary>
         public string IPAddress { get; set; } = null;
 
-        /// <summary> The port to connect to.</summary>
+        /// <summary>The port to connect to.</summary>
         public ushort Port { get; set; } = 0;
 
-        /// <summary> The size of the socket receive buffer. The default value is 8192 bytes.</summary>
+        /// <summary>(OPTIONAL) The size of the socket receive buffer. The default value is 8192 bytes.</summary>
         public int ReceiveDataBufferSize { get; set; } = 8192;
 
-        /// <summary> The size of the socket send buffer. The default value is 8192 bytes.</summary>
+        /// <summary>(OPTIONAL) The size of the socket send buffer. The default value is 8192 bytes.</summary>
         public int SendDataBufferSize { get; set; } = 8192;
 
-        /// <summary> (OPTIONAL) The interval in MILLISECONDS at which the main thread is refreshed. The default value is 30.</summary>
+        /// <summary>(OPTIONAL) The time in MILISECONDS after the receive data operation will time out. The default value is 0 which means no timeout.</summary>
+        public int ReceiveDataTimeout { get; set; } = 0;
+
+        /// <summary>(OPTIONAL) The time in MILISECONDS after the send data operation will time out. The default value is 0 which means no timeout.</summary>
+        public int SendDataTimeout { get; set; } = 0;
+
+        /// <summary>(OPTIONAL) The interval in MILLISECONDS at which the main thread is refreshed. The default value is 30.</summary>
         public double MainThreadRefreshRate { get; set; } = 30;
 
         /// <summary>(OPTIONAL) Indicates whether the client is automatically disconnected when an error occurs trying to read or send data. The default value is true.</summary>
@@ -25,10 +31,13 @@ namespace SimpleNetworking.Client
         /// <summary> Disable all internal logging.</summary>
         public bool DisableInternalLogging { get; set; } = false;
 
-        /// <summary> Action to execute when a new packet is received from the server. First argument is the data received in a packet.</summary>
+        /// <summary>Callback to execute when a new packet is received from the server. Arg1 is the data received in a packet.</summary>
         public Action<Utils.Packet> DataReceivedCallback { get; set; } = null;
 
-        /// <summary> (OPTIONAL) Action to execute when the client is disconnected from the server.</summary>
-        public Action ClientDisconnectedCallback { get; set; } = null;
+        /// <summary>(OPTIONAL) Callback to execute when the client is disconnected from the server. Arg1 indicates which protocol was disconnected.</summary>
+        public Action<Protocol> ClientDisconnectedCallback { get; set; } = null;
+
+        /// <summary>(OPTIONAL) Callback to execute when a network operation fails and an exception is thrown. Arg1 is the operation that failed. Arg2 is the exception thrown.</summary>
+        public Action<FailedOperation, Exception> NetworkOperationFailedCallback { get; set; } = null;
     }
 }

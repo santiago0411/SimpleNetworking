@@ -13,14 +13,21 @@ namespace ClientTests
         {
             log4net.Config.XmlConfigurator.Configure(new System.IO.FileInfo("log4net.config"));
             client = new Client(CreateOptions());
-            
+
             try
             {
                 client.ConnectToServerTCP();
+                client.ConnectToServerUDP();
+
+                /*using var p = new Packet();
+                p.Write("This is the client sending data to the UDP only server.");
+                client.SendPacketUDP(p, false);*/
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
+                client.Disconnect();
+                Console.WriteLine("Press any key to exit...");
                 Console.ReadKey();
             }
             
@@ -38,11 +45,16 @@ namespace ClientTests
 
         private static void ReceivedData(Packet packet)
         {
+            uint id = packet.ReadUInt();
+            log.Info($"Id is: {id}");
+            client.Id = 1;
             log.Info($"Received string: {packet.ReadString()}");
 
             using var p = new Packet();
-            p.Write($"Hello from client {client.Id}");
-            client.SendPacketTCP(p);
+            p.Write($"Hi server, this is client: {id}.");
+            client.SendPacketUDP(p);
+
+            //client.SendPacketUDP(p, false);
         }
     }
 }

@@ -21,58 +21,58 @@ namespace SimpleNetworking.Client
             endPoint = new IPEndPoint(IPAddress.Parse(client.Options.IPAddress), client.Options.Port);
         }
 
-        public void Connect(int localPort)
+        public void Connect()
         {
-            try
-            {
-                log.Info("Connecting UDP client...");
+            log.Info("Connecting UDP client...");
 
-                Socket = new UdpClient(localPort);
-                Socket.Connect(endPoint);
-                Socket.BeginReceive(ReceiveCallback, null);
+            Socket = new UdpClient();
+            Socket.Connect(endPoint);
+            Socket.BeginReceive(ReceiveCallback, null);
 
-                client.UdpIsConnected = true;
-
-                log.Info("Successfully connected to server through UDP.");
-
-                using var packet = new Packet();
-                SendData(packet);
-            }
-            catch
-            {
-                Disconnect();
-                throw;
-            }
+            log.Info("Successfully connected to server through UDP.");
         }
 
-        public void Disconnect()
+        public void Disconnect(bool invokeCallback = true)
         {
             Socket?.Close();
             Socket?.Dispose();
             Socket = null;
             endPoint = null;
-            client.UdpIsConnected = false;
             log.Info("UDP client socket has been disconnected and closed.");
+
+            if (invokeCallback)
+                client.Options.ClientDisconnectedCallback?.Invoke(Protocol.Udp);
         }
 
-        public void SendData(Packet packet)
+        public void SendData(Packet packet, bool writeId)
         {
             try
             {
-                packet.InsertInt((int)client.Id);
                 packet.WriteLength();
 
-                if (!(Socket is null))
-                    Socket.BeginSend(packet.ToArray(), packet.Length(), null, null);
-            }
-            catch
-            {
-                if (client.Options.DisconnectClientOnError)
+                if (writeId)
                 {
-                    log.Error($"There was an error trying to send UDP data to the server. Disconnecting...");
-                    client.Disconnect();
+                    if (client.Id == 0)
+                        log.Warn("The id has not been set and its value is still 0.");
+
+                    packet.InsertInt((int)client.Id);
                 }
-                throw;
+
+                if (Socket is null)
+                {
+                    log.Warn("The UDP socket is null. Data cannot be sent.");
+                    return;
+                }
+
+                Socket.BeginSend(packet.ToArray(), packet.Length(), null, null);
+            }
+            catch (Exception ex)
+            {
+                log.Error("There was an error trying to send UDP data to the server.", ex);
+                log.Info($"The UDP socket will be closed.");
+                Disconnect();
+
+                client.Options.NetworkOperationFailedCallback?.Invoke(FailedOperation.SendDataUDP, ex);
             }
         }
 
@@ -80,10 +80,10 @@ namespace SimpleNetworking.Client
         {
             try
             {
-                log.Debug("New UDP data received.");
-
                 byte[] data = Socket.EndReceive(result, ref endPoint);
                 Socket.BeginReceive(ReceiveCallback, null);
+
+                log.Debug("New UDP data received.");
 
                 if (data.Length < 4)
                 {
@@ -93,18 +93,17 @@ namespace SimpleNetworking.Client
 
                 HandleData(data);
             }
-            catch
+            catch (Exception ex)
             {
-                if (client.Options.DisconnectClientOnError)
-                {
-                    client.Disconnect();
-                    log.Error($"There was an error trying to receive UDP data from the server. Disconnecting...");
-                }
-                throw;
+                log.Error("There was an error trying to receive UDP data from the server.", ex);
+                log.Info($"The UDP socket will be closed.");
+                Disconnect();
+
+                client.Options.NetworkOperationFailedCallback?.Invoke(FailedOperation.SendDataUDP, ex);
             }
         }
 
-        public void HandleData(byte[] data)
+        private void HandleData(byte[] data)
         {
             log.Debug("Processing the received UDP data.");
 

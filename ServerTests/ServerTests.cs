@@ -29,24 +29,70 @@ namespace ServerTests
         {
             return new ServerOptions
             {
+                IPAddress = System.Net.IPAddress.Any,
                 Port = 30500,
+                Protocol = ServerProtocol.Both,
                 ClientsPoolStartingSize = 50,
                 MaxClients = 100,
-                DataReceivedCallback = ReceivedData,
-                ClientConnectedCallback = ClientConnected
+                DisconnectClientOnError = true,
+                ClientConnectedCallback = OnClientConnected,
+                ClientAcceptedCallback = OnClientAccepted,
+                ClientDisconnectedCallback = OnClientDisconnected,
+                DataReceivedCallback = OnDataReceived,
+                NetworkOperationFailedCallback = OnNetworkOperationFailed,
+                ServerIsFullCallback = OnServerFull,
+                //UDPDataReceivedCallback = OnReceiveUdpData,
+                //RequireClientToSendIdInUdpData = false,
+                DisableInternalLogging = false,
+                ReceiveDataBufferSize = 4096,
+                SendDataBufferSize = 4096,
+                ReceiveDataTimeout = 0,
+                SendDataTimeout = 0,
+                MainThreadRefreshRate = 30
             };
         }
 
-        private static void ReceivedData(uint clientId, Packet packet)
+        private static bool OnClientConnected(ClientInfo clientInfo)
+        {
+            log.Info($"Authenticating client: {clientInfo.TcpEndPoint.Address} with id {clientInfo.AssignedId}");
+            return true;
+        }
+
+
+        private static void OnClientAccepted(ClientInfo clientInfo)
+        {
+            using var packet = new Packet();
+            packet.Write(clientInfo.AssignedId);
+            packet.Write("Welcome to the server!");
+            server.SendPacketTCP(clientInfo.AssignedId, packet);
+        }
+
+        private static void OnClientDisconnected(ClientInfo clientInfo, ServerProtocol protocol)
+        {
+            log.Info($"Client {clientInfo.AssignedId} with ip {clientInfo.IpAddress} has disconnected.");
+        }
+
+        private static void OnDataReceived(uint clientId, Packet packet)
         {
             log.Info($"Received message from client: {clientId} - {packet.ReadString()}");
         }
 
-        private static void ClientConnected(ClientInfo clientInfo)
+        private static void OnReceiveUdpData(Packet packet)
         {
-            using var packet = new Packet();
-            packet.Write("Welcome to the server!!");
-            server.SendPacketTCP(clientInfo.AssignedId, packet);
+            log.Info($"Manually parsing the whole UDP packet.");
+            log.Info($"Client id is: {packet.ReadUInt()}");
+            log.Info($"Packet length is: {packet.ReadInt()}");
+            log.Info($"Received UDP data: {packet.ReadString()}");
+        }
+
+        private static void OnNetworkOperationFailed(ClientInfo clientInfo, FailedOperation failedOperation, Exception ex)
+        {
+            log.Error($"There was an error on {failedOperation} for client {clientInfo.AssignedId}: {ex.Message}");
+        }
+
+        private static void OnServerFull()
+        {
+            log.Warn("Server is full!!");
         }
     }
 }

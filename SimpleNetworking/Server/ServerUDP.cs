@@ -11,33 +11,32 @@ namespace SimpleNetworking.Server
 
         public IPEndPoint EndPoint { get; private set; }
 
-        private readonly uint id;
-        private readonly bool disconnectOnError;
-        private readonly UdpClient udpListener;
+        private readonly ServerClient serverClient;
+        private readonly ServerOptions options;
         private readonly ThreadManager threadManager;
-        private readonly Action disconnectClient;
-        private readonly Action<uint, Packet> dataReceivedCallback;
+        private readonly UdpClient udpListener;
 
-        public ServerUDP(uint id, bool disconnectOnError, UdpClient udpListener, ThreadManager threadManager, Action disconnectClient, Action<uint, Packet> dataReceivedCallback)
+        public ServerUDP(ServerClient serverClient, ServerOptions options, ThreadManager threadManager, UdpClient udpListener)
         {
-            this.id = id;
-            this.disconnectOnError = disconnectOnError;
-            this.udpListener = udpListener;
+            this.serverClient = serverClient;
+            this.options = options;
             this.threadManager = threadManager;
-            this.disconnectClient = disconnectClient;
-            this.dataReceivedCallback = dataReceivedCallback;
+            this.udpListener = udpListener;
         }
 
-        public void Connect(IPEndPoint endPoint)
+        public void Connect(IPEndPoint clientEndpoint)
         {
-            EndPoint = endPoint;
-            log.Info("Successfully connected client through UDP.");
+            EndPoint = clientEndpoint;
         }
 
-        public void Disconnect()
+        public void Disconnect(bool invokeCallback = true)
         {
             EndPoint = null;
-            log.Info("UDP client endpoint has been disconnected and closed.");
+            serverClient.ClientInfo.HasActiveUdpConnection = false;
+            log.Info("UDP EndPoint cleared.");
+
+            if (invokeCallback)
+                options.ClientDisconnectedCallback?.Invoke(serverClient.ClientInfo, ServerProtocol.Udp);
         }
 
         public void SendData(Packet packet)
@@ -46,38 +45,43 @@ namespace SimpleNetworking.Server
             {
                 packet.WriteLength();
 
-                if (!(EndPoint is null))
-                    udpListener.BeginSend(packet.ToArray(), packet.Length(), EndPoint, null, null);
-            }
-            catch
-            {
-                if (disconnectOnError)
+                if (EndPoint is null)
                 {
-                    disconnectClient();
-                    log.Error($"There was an error trying to send UDP data to the client with id: {id} and it has been disconnected.");
+                    log.Warn($"The UDP EndPoint of the client: {serverClient.Id} is null. Data cannot be sent.");
+                    return;
                 }
-                throw;
+
+                udpListener.BeginSend(packet.ToArray(), packet.Length(), serverClient.Udp.EndPoint, null, null);
+            }
+            catch (Exception ex)
+            {
+                log.Error($"There was an error trying to send UDP data to the client with id: {serverClient.Id}.", ex);
+                log.Info($"The UDP socket will be closed.");
+                Disconnect();
+
+                options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.SendDataUDP, ex);
             }
         }
 
-        public void HandleData(Packet packetData)
+        public void HandleData(Packet receivedData)
         {
-            log.Debug("Processing the received UDP data.");
+            log.Debug($"Received new UDP data from client: {serverClient.Id}.");
 
-            if (packetData.UnreadLength() < 4)
-            {
-                log.Warn($"The received UDP data contains no bytes besides the client id: {id}.");
-                return;
-            }
+            log.Debug("Reading packet length.");
+            int packetLength = receivedData.ReadInt();
+            log.Debug($"Packet length is: {packetLength}");
+            if (packetLength <= 0) return;
 
-            int packetLength = packetData.ReadInt();
-            byte[] packetBytes = packetData.ReadBytes(packetLength);
+            byte[] packetBytes = receivedData.ReadBytes(packetLength);
+
+            log.Debug($"Raw data is [{BitConverter.ToString(packetBytes).Replace("-", "")}].");
+
             log.Debug("Creating new packet with the received UDP data and calling DataReceivedCallback.");
 
             threadManager.ExecuteOnMainThread(() =>
             {
                 using var packet = new Packet(packetBytes);
-                dataReceivedCallback(id, packet);
+                options.DataReceivedCallback(serverClient.Id, packet);
             });
         }
     }

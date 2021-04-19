@@ -13,39 +13,40 @@ namespace SimpleNetworking.Utils
             int packetLength = 0;
             receivedData.SetBytes(data);
 
-            if (receivedData.UnreadLength() >= 4)
+            if (receivedData.UnreadLength() < 4)
             {
-                log.Debug("Reading packet length.");
-                packetLength = receivedData.ReadInt();
-                log.Debug($"Packet length is: {packetLength}");
-                if (packetLength <= 0) return true;
+                log.Warn("Failed to read packet length, data does not have enough bytes. Packet will not be processed.");
+                return true;
             }
+
+            log.Debug("Reading packet length.");
+            packetLength = receivedData.ReadInt();
+            log.Debug($"Packet length is: {packetLength}");
+            if (packetLength <= 0) return true;
 
             while (packetLength > 0 && packetLength <= receivedData.UnreadLength())
             {
                 byte[] packetBytes = receivedData.ReadBytes(packetLength);
 
                 log.Debug("Creating new packet with the received TCP data and calling DataReceivedCallback.");
+
                 threadManager.ExecuteOnMainThread(() =>
                 {
                     using var packet = new Packet(packetBytes);
                     serverDataReceivedCallback?.Invoke(clientId, packet);
                     clientDataReceivedCallback?.Invoke(packet);
                 });
+
+                packetLength = 0;
+
+                if (receivedData.UnreadLength() >= 4)
+                {
+                    packetLength = receivedData.ReadInt();
+                    if (packetLength <= 0) return true;
+                }
             }
 
-            packetLength = 0;
-
-            if (receivedData.UnreadLength() >= 4)
-            {
-                packetLength = receivedData.ReadInt();
-                if (packetLength <= 0) return true;
-            }
-
-            //TODO check
-            if (packetLength <= 1) return true;
-
-            return false;
+            return packetLength == 0;
         }
     }
 }

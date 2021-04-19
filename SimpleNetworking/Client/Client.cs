@@ -1,21 +1,26 @@
 ﻿using System;
 using System.Threading;
+using SimpleNetworking.Exceptions;
 using SimpleNetworking.Utils;
 
 namespace SimpleNetworking.Client
 {
+    /// <summary>The protocols the client can use. Used to notified which protocol was disconnected in ClientDisconnectedCallback.</summary>
+    public enum Protocol { Tcp, Udp, Both }
+
+    /// <summary>The operations that can fail and raise a NetworkOperationFailedCallback.</summary>
+    public enum FailedOperation { SendDataTCP, ReceiveDataTCP, SendDataUDP, ReceiveDataUDP }
+
     public sealed class Client
     {
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(Client));
 
-        /// <summary>The id assigned by the server to the client upon connection.</summary>
-        public uint Id { get; internal set; }
+        /// <summary>The id assigned by the server. Must be set by the user, it is NOT set automatically.</summary>
+        public uint Id { get; set; }
         /// <summary>Contains whether a Tcp connection has been established and is active.</summary>
-        public bool TcpIsConnected { get; internal set; }
-        /// <summary>Contains whether a Udp connection has been established and is active.</summary>
-        public bool UdpIsConnected { get; internal set; }
+        public bool IsConnected { get; internal set; }
 
-        internal ThreadManager ThreadManager { get; private set; } = null;
+        internal ThreadManager ThreadManager { get; private set; } = new ThreadManager();
         internal ClientOptions Options { get; private set; } = null;
 
         internal ClientTCP tcp = null;
@@ -34,6 +39,7 @@ namespace SimpleNetworking.Client
 
         /// <summary> Initializes the client with the options received.</summary>
         /// <exception cref="ArgumentNullException">Thrown when options or one of the options is null.</exception>
+        /// <exception cref="InvalidOptionsException">Thrown when one of the required options has an invalid value.</exception>
         public Client(ClientOptions options)
         {
             if (options is null)
@@ -45,40 +51,52 @@ namespace SimpleNetworking.Client
             if (options.DataReceivedCallback is null)
                 throw new ArgumentNullException("DataReceivedCallback was null.");
 
+            if (options.ReceiveDataBufferSize <= 0)
+                throw new InvalidOptionsException("The ReceiveDataBufferSize value cannot be smaller than 1.");
+
+            if (options.SendDataBufferSize <= 0)
+                throw new InvalidOptionsException("The SendDataBufferSize value cannot be smaller than 1.");
+
+            if (options.ReceiveDataTimeout < 0)
+                throw new InvalidOptionsException("The ReceiveDataTimeout value cannot be smaller than 0.");
+
+            if (options.SendDataTimeout < 0)
+                throw new InvalidOptionsException("The SendDataTimeout value cannot be smaller than 0.");
+
+            if (options.MainThreadRefreshRate < 0)
+                throw new InvalidOptionsException("The MainThreadRefreshRate value cannot be smaller than 0.");
+
+            if (options.DataReceivedCallback is null)
+                throw new InvalidOptionsException("The DataReceivedCallback cannot be null because data will not be able to be sent back.");
+
             LoggerConfig.CheckLoggerConfig(options.DisableInternalLogging);
 
             Options = options;
-            ThreadManager = new ThreadManager();
             tcp = new ClientTCP(this);
             udp = new ClientUDP(this);
+
+            StartThread();
         }
 
         /// <summary>Attempts to connect to the client via TCP.</summary>
         public void ConnectToServerTCP()
         {
-            StartThread();
             tcp.Connect();
         }
 
         /// <summary>Attempts to connect to the client via UDP.</summary>
         public void ConnectToServerUDP()
         {
-            if (TcpIsConnected)
-            {
-                udp.Connect(((System.Net.IPEndPoint)tcp.Socket.Client.LocalEndPoint).Port);
-                return;
-            }
-
-            log.Warn("Cannot connect through UDP before a TCP connection is established.");
+            udp.Connect();
         }
 
         /// <summary>Disconnects the client from the server and raises the ClientDisconnectedCallback.</summary>
         public void Disconnect()
         {
             log.Info("Disconnecting client...");
-            tcp.Disconnect();
-            udp.Disconnect();
-            Options.ClientDisconnectedCallback?.Invoke();
+            tcp?.Disconnect(false);
+            udp?.Disconnect(false);
+            Options.ClientDisconnectedCallback?.Invoke(Protocol.Both);
 
             log.Debug("Stopping main thread and joining...");
             ThreadManager.StopMainThread();
@@ -93,10 +111,10 @@ namespace SimpleNetworking.Client
         }
 
         /// <summary>Sends a packet via UDP.</summary>
-        public void SendPacketUDP(Packet packet)
+        public void SendPacketUDP(Packet packet, bool writeId = true)
         {
             log.Debug($"Sending UDP data to server.");
-            udp.SendData(packet);
+            udp.SendData(packet, writeId);
         }
 
         private void StartThread()

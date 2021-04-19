@@ -1,7 +1,4 @@
-﻿using System;
-using SimpleNetworking.Utils;
-
-namespace SimpleNetworking.Server
+﻿namespace SimpleNetworking.Server
 {
     internal class ServerClient
     {
@@ -10,28 +7,31 @@ namespace SimpleNetworking.Server
         public uint Id { get; private set; }
         public ServerTCP Tcp { get; private set; }
         public ServerUDP Udp { get; private set; }
+        public ClientInfo ClientInfo { get; set; }
 
-        private readonly Action<ClientInfo> clientDisconnectedCallback = null;
+        private readonly Server server = null;
 
-        internal ServerClient(uint id, ServerOptions options, System.Net.Sockets.UdpClient udpListener, ThreadManager threadManager)
+        internal ServerClient(uint id, Server server)
         {
             Id = id;
-            clientDisconnectedCallback = options.ClientDisconnectedCallback;
+            this.server = server;
 
-            Tcp = new ServerTCP(id, options.ReceiveDataBufferSize, options.SendDataBufferSize, options.DisconnectClientOnError, threadManager, Disconnect, options.DataReceivedCallback);
+            if (server.Options.Protocol != ServerProtocol.Udp)
+                Tcp = new ServerTCP(this, server.Options, server.ThreadManager);
 
-            if (options.Protocol == Server.ServerProtocol.TcpAndUdp)
-                Udp = new ServerUDP(id, options.DisconnectClientOnError, udpListener, threadManager, Disconnect, options.DataReceivedCallback);
-
+            if (server.Options.Protocol != ServerProtocol.Tcp)
+                Udp = new ServerUDP(this, server.Options, server.ThreadManager, server.UdpListener);
         }
 
         public void Disconnect()
         {
-            Tcp.Disconnect();
-            Udp.Disconnect();
+            Tcp?.Disconnect(false);
+            Udp?.Disconnect(false);
+
+            ClientInfo = null;
 
             log.Debug("Invoking ClientDisconnectedCallback.");
-            clientDisconnectedCallback?.Invoke(new ClientInfo(Id, null));
+            server.Options.ClientDisconnectedCallback?.Invoke(ClientInfo, ServerProtocol.Both);
         }
     }
 }
