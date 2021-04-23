@@ -10,11 +10,8 @@ namespace SimpleNetworking.Server
         /// <summary>The port to listen on.</summary>
         public ushort Port { get; set; } = 0;
 
-        /// <summary>(OPTIONAL) Maximum number of clients able to connect to the server at the same time. The default value is 0 which means no maximum.</summary>
-        public uint MaxClients { get; set; } = 0;
-
-        /// <summary>(OPTIONAL) The number of clients to set up in the pool as soon as the server starts. The default value is 100.</summary>
-        public uint ClientsPoolStartingSize { get; set; } = 100;
+        /// <summary>(OPTIONAL) Maximum number of clients able to connect to the server at the same time. The default value is 100000.</summary>
+        public int MaxClients { get; set; } = 100000;
 
         /// <summary>(OPTIONAL) The size of the socket receive buffer. The default value is 8192 bytes.</summary>
         public int ReceiveDataBufferSize { get; set; } = 8192;
@@ -34,17 +31,17 @@ namespace SimpleNetworking.Server
         /// <summary>(OPTIONAL) Whether a client is required to send their id that was assigned through TCP. The default value is TRUE. If set to TRUE the client will have to send 4 bytes with its ID at the beginning of the UDP packet otherwise the data will be ignored. If set to FALSE UDPDataReceivedCallback will be invoked instead containing a packet with the raw data.</summary>
         public bool RequireClientToSendIdInUdpData { get; set; } = true;
 
-        /// <summary>(OPTIONAL) The interval in MILLISECONDS at which the main thread is refreshed. The default value is 30.</summary>
-        public double MainThreadRefreshRate { get; set; } = 30;
+        /// <summary>(OPTIONAL) The interval in MILLISECONDS at which the server thread is refreshed. The default value is 30.</summary>
+        public double InternalThreadRefreshRate { get; set; } = 30;
 
         /// <summary>(OPTIONAL) Indicates whether the clients are automatically disconnected when an error occurs trying to read or send data. The default value is true.</summary>
         public bool DisconnectClientOnError { get; set; } = true;
 
-        /// <summary>Disable all internal logging.</summary>
-        public bool DisableInternalLogging { get; set; } = false;
+        /// <summary> The depth level of internal logging. The default value is All.</summary>
+        public log4net.Core.Level InternalLoggingLevel { get; set; } = log4net.Core.Level.All;
 
         /// <summary>Callback to execute when a new packet is received from a client. Arg1 is the client's assigned Id. Arg2 is the received data.</summary>
-        public Action<uint, Utils.Packet> DataReceivedCallback { get; set; } = null;
+        public Action<int, Utils.Packet> DataReceivedCallback { get; set; } = null;
 
         /// <summary>(OPTIONAL) Callback to execute when the RequireClientToSendIdInUdpData flag is set to FALSE and new UDP data that can't be identified is received. Arg1 is the received data.</summary>
         public Action<Utils.Packet> UDPDataReceivedCallback { get; set; } = null;
@@ -53,7 +50,7 @@ namespace SimpleNetworking.Server
         public Func<ClientInfo, bool> ClientConnectedCallback { get; set; } = null;
 
         /// <summary>(OPTIONAL) Callback to execute after a new client has been accepted and a connection has been establish. Arg1 is the info of the accepted client.</summary>
-        public Action<ClientInfo> ClientAcceptedCallback { get; set; } = null;
+        public Action<ClientInfo> ClientConnectionEstablishedCallback { get; set; } = null;
 
         /// <summary>(OPTIONAL) Callback to execute when a client disconnects or is disconnected from the server. Arg1 is the info the client. Arg2 is the protocol that got disconnected.</summary>
         public Action<ClientInfo, ServerProtocol> ClientDisconnectedCallback { get; set; } = null;
@@ -61,7 +58,7 @@ namespace SimpleNetworking.Server
         /// <summary>(OPTIONAL) Callback to execute when a network operation fails and an exception is thrown. Arg1 is the info of the client on which the operation failed. Arg2 is the operation that failed. Arg3 is the exception thrown.</summary>
         public Action<ClientInfo, FailedOperation, Exception> NetworkOperationFailedCallback { get; set; } = null;
 
-        /// <summary>(OPTIONAL) Callback to execute when the server reaches it maximum capacity.</summary>
+        /// <summary>(OPTIONAL) Callback to execute everytime a client tries to connect but the server has reached it maximum capacity.</summary>
         public Action ServerIsFullCallback { get; set; } = null;
     }
 }

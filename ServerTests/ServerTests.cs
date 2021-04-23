@@ -17,6 +17,7 @@ namespace ServerTests
             try
             {
                 server.Listen();
+                Console.WriteLine("Asdasdasdasd");
             }
             catch (Exception ex)
             {
@@ -30,25 +31,24 @@ namespace ServerTests
             return new ServerOptions
             {
                 IPAddress = System.Net.IPAddress.Any,
-                Port = 30500,
+                Port = 50005,
                 Protocol = ServerProtocol.Both,
-                ClientsPoolStartingSize = 50,
                 MaxClients = 100,
                 DisconnectClientOnError = true,
                 ClientConnectedCallback = OnClientConnected,
-                ClientAcceptedCallback = OnClientAccepted,
+                ClientConnectionEstablishedCallback = OnClientAccepted,
                 ClientDisconnectedCallback = OnClientDisconnected,
                 DataReceivedCallback = OnDataReceived,
                 NetworkOperationFailedCallback = OnNetworkOperationFailed,
                 ServerIsFullCallback = OnServerFull,
                 //UDPDataReceivedCallback = OnReceiveUdpData,
                 //RequireClientToSendIdInUdpData = false,
-                DisableInternalLogging = false,
+                InternalLoggingLevel = log4net.Core.Level.Info,
                 ReceiveDataBufferSize = 4096,
                 SendDataBufferSize = 4096,
                 ReceiveDataTimeout = 0,
                 SendDataTimeout = 0,
-                MainThreadRefreshRate = 30
+                InternalThreadRefreshRate = 30
             };
         }
 
@@ -72,7 +72,7 @@ namespace ServerTests
             log.Info($"Client {clientInfo.AssignedId} with ip {clientInfo.IpAddress} has disconnected.");
         }
 
-        private static void OnDataReceived(uint clientId, Packet packet)
+        private static void OnDataReceived(int clientId, Packet packet)
         {
             log.Info($"Received message from client: {clientId} - {packet.ReadString()}");
         }
@@ -80,7 +80,7 @@ namespace ServerTests
         private static void OnReceiveUdpData(Packet packet)
         {
             log.Info($"Manually parsing the whole UDP packet.");
-            log.Info($"Client id is: {packet.ReadUInt()}");
+            log.Info($"Client id is: {packet.ReadInt()}");
             log.Info($"Packet length is: {packet.ReadInt()}");
             log.Info($"Received UDP data: {packet.ReadString()}");
         }

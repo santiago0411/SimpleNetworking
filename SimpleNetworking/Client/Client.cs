@@ -16,11 +16,10 @@ namespace SimpleNetworking.Client
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(Client));
 
         /// <summary>The id assigned by the server. Must be set by the user, it is NOT set automatically.</summary>
-        public uint Id { get; set; }
+        public int Id { get; set; }
         /// <summary>Contains whether a Tcp connection has been established and is active.</summary>
         public bool IsConnected { get; internal set; }
 
-        internal ThreadManager ThreadManager { get; private set; } = new ThreadManager();
         internal ClientOptions Options { get; private set; } = null;
 
         internal ClientTCP tcp = null;
@@ -28,11 +27,12 @@ namespace SimpleNetworking.Client
 
         private Thread mainThread = null;
 
-        public Client(string ipAddress, ushort port) :
+        public Client(string ipAddress, ushort port, Action<Packet> dataReceivedCallback) :
             this(new ClientOptions 
             { 
                 IPAddress = ipAddress, 
-                Port = port 
+                Port = port,
+                DataReceivedCallback = dataReceivedCallback
             })
         {
         }
@@ -63,28 +63,41 @@ namespace SimpleNetworking.Client
             if (options.SendDataTimeout < 0)
                 throw new InvalidOptionsException("The SendDataTimeout value cannot be smaller than 0.");
 
-            if (options.MainThreadRefreshRate < 0)
+            if (options.InternalThreadRefreshRate < 0)
                 throw new InvalidOptionsException("The MainThreadRefreshRate value cannot be smaller than 0.");
 
             if (options.DataReceivedCallback is null)
                 throw new InvalidOptionsException("The DataReceivedCallback cannot be null because data will not be able to be sent back.");
 
-            LoggerConfig.CheckLoggerConfig(options.DisableInternalLogging);
+            LoggerConfig.CheckLoggerConfig(options.InternalLoggingLevel);
 
             Options = options;
             tcp = new ClientTCP(this);
             udp = new ClientUDP(this);
 
-            StartThread();
+            StartThread(() =>
+            {
+                DateTime nextLoop = DateTime.Now;
+                while (true)
+                {
+                    while (nextLoop < DateTime.Now)
+                    {
+                        nextLoop = nextLoop.AddMilliseconds(options.InternalThreadRefreshRate);
+
+                        if (nextLoop > DateTime.Now)
+                            Thread.Sleep(nextLoop - DateTime.Now);
+                    }
+                }
+            });
         }
 
-        /// <summary>Attempts to connect to the client via TCP.</summary>
+        /// <summary>Attempts to connect to the server via TCP.</summary>
         public void ConnectToServerTCP()
         {
             tcp.Connect();
         }
 
-        /// <summary>Attempts to connect to the client via UDP.</summary>
+        /// <summary>Attempts to connect to the server via UDP.</summary>
         public void ConnectToServerUDP()
         {
             udp.Connect();
@@ -98,8 +111,7 @@ namespace SimpleNetworking.Client
             udp?.Disconnect(false);
             Options.ClientDisconnectedCallback?.Invoke(Protocol.Both);
 
-            log.Debug("Stopping main thread and joining...");
-            ThreadManager.StopMainThread();
+            log.Info("Stopping main thread and joining...");
             mainThread.Join();
         }
 
@@ -117,10 +129,10 @@ namespace SimpleNetworking.Client
             udp.SendData(packet, writeId);
         }
 
-        private void StartThread()
+        private void StartThread(Action startClient)
         {
             log.Debug("Starting new thread.");
-            mainThread = new Thread(new ThreadStart(() => ThreadManager.StartMainThread(Options.MainThreadRefreshRate)));
+            mainThread = new Thread(new ThreadStart(() => startClient()));
             mainThread.Start();
         }
     }

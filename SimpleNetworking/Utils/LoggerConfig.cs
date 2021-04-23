@@ -11,7 +11,7 @@ namespace SimpleNetworking.Utils
     {
         private static readonly ILog log = LogManager.GetLogger(typeof(LoggerConfig));
 
-        public static void SetBasicConfig(bool disableLogging = false)
+        private static void SetBasicConfig(Level level)
         {
             var hierarchy = (Hierarchy)LogManager.GetRepository();
 
@@ -28,19 +28,19 @@ namespace SimpleNetworking.Utils
             appender.ActivateOptions();
 
             hierarchy.Root.AddAppender(appender);
-            hierarchy.Root.Level = disableLogging ? Level.Off : Level.Debug;
+            hierarchy.Root.Level = level;
             hierarchy.Configured = true;
         }
 
-        internal static void CheckLoggerConfig(bool disableLogging)
+        internal static void CheckLoggerConfig(Level level)
         {
             if (!log.Logger.Repository.Configured)
             {
-                SetBasicConfig(disableLogging);
+                SetBasicConfig(level);
                 return;
             }
 
-            if (disableLogging)
+            if (level.Equals(Level.Off))
                 log.Warn("Logger has already been configured and it might not be disabled.");
         }
     }

@@ -77,13 +77,8 @@ namespace SimpleNetworking.Client
             {
                 packet.WriteLength();
 
-                if (Socket is null)
-                {
-                    log.Warn("The TCP socket is null. Data cannot be sent.");
-                    return;
-                }
-
-                stream.BeginWrite(packet.ToArray(), 0, packet.Length(), null, null);
+                if (!(Socket is null))
+                    stream.BeginWrite(packet.ToArray(), 0, packet.Length(), null, null);
             }
             catch (Exception ex)
             {
@@ -120,15 +115,13 @@ namespace SimpleNetworking.Client
 
                 log.Debug($"Raw data is [{BitConverter.ToString(data).Replace("-", "")}].");
 
-                receivedData.Reset(TcpDataHandler.HandleData(client.Id, data, receivedData, client.ThreadManager, clientDataReceivedCallback: client.Options.DataReceivedCallback));
+                receivedData.Reset(TcpDataHandler.HandleData(client.Id, data, receivedData, clientDataReceivedCallback: client.Options.DataReceivedCallback));
                 stream.BeginRead(receiveBuffer, 0, client.Options.ReceiveDataBufferSize, ReceiveCallback, null);
             }
             catch (System.IO.IOException)
             {
                 log.Info("The socket has been closed by the server.");
-                Disconnect();
-                log.Debug("Invoking ClientDisconnectedCallback.");
-                client.Options.ClientDisconnectedCallback?.Invoke(Protocol.Tcp);
+                client.Disconnect();
             }
             catch (Exception ex)
             {

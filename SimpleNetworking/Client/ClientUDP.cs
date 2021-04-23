@@ -55,16 +55,11 @@ namespace SimpleNetworking.Client
                     if (client.Id == 0)
                         log.Warn("The id has not been set and its value is still 0.");
 
-                    packet.InsertInt((int)client.Id);
+                    packet.InsertInt(client.Id);
                 }
 
-                if (Socket is null)
-                {
-                    log.Warn("The UDP socket is null. Data cannot be sent.");
-                    return;
-                }
-
-                Socket.BeginSend(packet.ToArray(), packet.Length(), null, null);
+                if (!(Socket is null))
+                    Socket.BeginSend(packet.ToArray(), packet.Length(), null, null);
             }
             catch (Exception ex)
             {
@@ -113,11 +108,8 @@ namespace SimpleNetworking.Client
 
             log.Debug("Creating new packet with the received UDP data and calling DataReceivedCallback.");
 
-            client.ThreadManager.ExecuteOnMainThread(() =>
-            {
-                using var packet = new Packet(data);
-                client.Options.DataReceivedCallback(packet);
-            });
+            using var p = new Packet(data);
+            client.Options.DataReceivedCallback(p);
         }
     }
 }

@@ -38,14 +38,14 @@ namespace ClientTests
             return new ClientOptions
             {
                 IPAddress = "127.0.0.1",
-                Port = 30500,
+                Port = 50005,
                 DataReceivedCallback = ReceivedData,
             };
         }
 
         private static void ReceivedData(Packet packet)
         {
-            uint id = packet.ReadUInt();
+            int id = packet.ReadInt();
             log.Info($"Id is: {id}");
             client.Id = 1;
             log.Info($"Received string: {packet.ReadString()}");
@@ -53,7 +53,6 @@ namespace ClientTests
             using var p = new Packet();
             p.Write($"Hi server, this is client: {id}.");
             client.SendPacketUDP(p);
-
             //client.SendPacketUDP(p, false);
         }
     }

@@ -6,11 +6,9 @@ namespace SimpleNetworking.Utils
     {
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(TcpDataHandler));
 
-        public static bool HandleData(uint clientId, byte[] data, Packet receivedData, ThreadManager threadManager, Action<uint, Packet> serverDataReceivedCallback = null, Action<Packet> clientDataReceivedCallback = null)
+        public static bool HandleData(int clientId, byte[] data, Packet receivedData, Action<int, Packet> serverDataReceivedCallback = null, Action<Packet> clientDataReceivedCallback = null)
         {
             log.Debug("Processing new TCP data...");
-
-            int packetLength = 0;
             receivedData.SetBytes(data);
 
             if (receivedData.UnreadLength() < 4)
@@ -19,9 +17,9 @@ namespace SimpleNetworking.Utils
                 return true;
             }
 
-            log.Debug("Reading packet length.");
-            packetLength = receivedData.ReadInt();
-            log.Debug($"Packet length is: {packetLength}");
+            int packetLength = receivedData.ReadInt();
+            log.Debug($"Packet length is: {packetLength}.");
+
             if (packetLength <= 0) return true;
 
             while (packetLength > 0 && packetLength <= receivedData.UnreadLength())
@@ -30,12 +28,9 @@ namespace SimpleNetworking.Utils
 
                 log.Debug("Creating new packet with the received TCP data and calling DataReceivedCallback.");
 
-                threadManager.ExecuteOnMainThread(() =>
-                {
-                    using var packet = new Packet(packetBytes);
-                    serverDataReceivedCallback?.Invoke(clientId, packet);
-                    clientDataReceivedCallback?.Invoke(packet);
-                });
+                using var packet = new Packet(packetBytes);
+                serverDataReceivedCallback?.Invoke(clientId, packet);
+                clientDataReceivedCallback?.Invoke(packet);
 
                 packetLength = 0;
 

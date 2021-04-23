@@ -16,20 +16,18 @@ namespace SimpleNetworking.Server
 
         private readonly ServerClient serverClient;
         private readonly ServerOptions options;
-        private readonly ThreadManager threadManager;
 
-        public ServerTCP(ServerClient serverClient, ServerOptions options, ThreadManager threadManager)
+        public ServerTCP(ServerClient serverClient, ServerOptions options)
         {
             this.serverClient = serverClient;
             this.options = options;
-            this.threadManager = threadManager;
         }
 
         public void Connect(TcpClient socket)
         {
             try
             {
-                log.Info("Connecting TCP client...");
+                log.Debug("Connecting TCP client...");
 
                 Socket = socket;
                 Socket.ReceiveBufferSize = options.ReceiveDataBufferSize;
@@ -44,12 +42,12 @@ namespace SimpleNetworking.Server
 
                 stream.BeginRead(receiveBuffer, 0, options.ReceiveDataBufferSize, ReceiveCallback, null);
 
-                log.Info("Successfully connected client through TCP.");
+                log.Debug("Successfully connected client through TCP.");
             }
             catch (Exception ex)
             {
                 log.Error($"There was an error trying to establish a TCP connection to the client with id: {serverClient.Id}. The TCP socket of this client will be closed.", ex);
-                Disconnect();
+                serverClient.Disconnect(false);
                 options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.ConnectTCP, ex);
             }
         }
@@ -83,13 +81,6 @@ namespace SimpleNetworking.Server
             try
             {
                 packet.WriteLength();
-
-                if (Socket is null)
-                {
-                    log.Warn($"The TCP socket of the client: {serverClient.Id} is null. Data cannot be sent.");
-                    return;
-                }
-
                 stream.BeginWrite(packet.ToArray(), 0, packet.Length(), null, null);
             }
             catch (Exception ex)
@@ -98,8 +89,8 @@ namespace SimpleNetworking.Server
 
                 if (options.DisconnectClientOnError)
                 {
-                    log.Info($"The TCP socket of this client will be closed.");
-                    Disconnect();
+                    log.Info($"The client will be disconnected.");
+                    serverClient.Disconnect();
                 }
 
                 options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.SendDataTCP, ex);
@@ -127,13 +118,13 @@ namespace SimpleNetworking.Server
 
                 log.Debug($"Raw data is [{BitConverter.ToString(data).Replace("-", "")}].");
 
-                receivedData.Reset(TcpDataHandler.HandleData(serverClient.Id, data, receivedData, threadManager, serverDataReceivedCallback: options.DataReceivedCallback));
+                receivedData.Reset(TcpDataHandler.HandleData(serverClient.Id, data, receivedData, serverDataReceivedCallback: options.DataReceivedCallback));
                 stream.BeginRead(receiveBuffer, 0, options.ReceiveDataBufferSize, ReceiveCallback, null);
             }
             catch (System.IO.IOException)
             {
                 log.Info("The socket has been closed by the client.");
-                Disconnect();
+                serverClient.Disconnect();
             }
             catch (Exception ex)
             {
@@ -141,8 +132,8 @@ namespace SimpleNetworking.Server
 
                 if (options.DisconnectClientOnError)
                 {
-                    log.Info($"The TCP socket of this client will be closed.");
-                    Disconnect();
+                    log.Info($"The client will be disconnected.");
+                    serverClient.Disconnect();
                 }
 
                 options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.ReceiveDataTCP, ex);

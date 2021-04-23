@@ -22,14 +22,14 @@ namespace SimpleNetworking.Client
         /// <summary>(OPTIONAL) The time in MILISECONDS after the send data operation will time out. The default value is 0 which means no timeout.</summary>
         public int SendDataTimeout { get; set; } = 0;
 
-        /// <summary>(OPTIONAL) The interval in MILLISECONDS at which the main thread is refreshed. The default value is 30.</summary>
-        public double MainThreadRefreshRate { get; set; } = 30;
+        /// <summary>(OPTIONAL) The interval in MILLISECONDS at which the client thread is refreshed. The default value is 30.</summary>
+        public double InternalThreadRefreshRate { get; set; } = 30;
 
         /// <summary>(OPTIONAL) Indicates whether the client is automatically disconnected when an error occurs trying to read or send data. The default value is true.</summary>
         public bool DisconnectClientOnError { get; set; } = true;
 
-        /// <summary> Disable all internal logging.</summary>
-        public bool DisableInternalLogging { get; set; } = false;
+        /// <summary> The depth level of internal logging. The default value is All.</summary>
+        public log4net.Core.Level InternalLoggingLevel { get; set; } = log4net.Core.Level.All;
 
         /// <summary>Callback to execute when a new packet is received from the server. Arg1 is the data received in a packet.</summary>
         public Action<Utils.Packet> DataReceivedCallback { get; set; } = null;

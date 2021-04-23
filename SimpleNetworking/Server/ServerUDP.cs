@@ -13,14 +13,12 @@ namespace SimpleNetworking.Server
 
         private readonly ServerClient serverClient;
         private readonly ServerOptions options;
-        private readonly ThreadManager threadManager;
         private readonly UdpClient udpListener;
 
-        public ServerUDP(ServerClient serverClient, ServerOptions options, ThreadManager threadManager, UdpClient udpListener)
+        public ServerUDP(ServerClient serverClient, ServerOptions options, UdpClient udpListener)
         {
             this.serverClient = serverClient;
             this.options = options;
-            this.threadManager = threadManager;
             this.udpListener = udpListener;
         }
 
@@ -33,7 +31,7 @@ namespace SimpleNetworking.Server
         {
             EndPoint = null;
             serverClient.ClientInfo.HasActiveUdpConnection = false;
-            log.Info("UDP EndPoint cleared.");
+            log.Info("UDP EndPoint disconnected.");
 
             if (invokeCallback)
                 options.ClientDisconnectedCallback?.Invoke(serverClient.ClientInfo, ServerProtocol.Udp);
@@ -45,20 +43,12 @@ namespace SimpleNetworking.Server
             {
                 packet.WriteLength();
 
-                if (EndPoint is null)
-                {
-                    log.Warn($"The UDP EndPoint of the client: {serverClient.Id} is null. Data cannot be sent.");
-                    return;
-                }
-
-                udpListener.BeginSend(packet.ToArray(), packet.Length(), serverClient.Udp.EndPoint, null, null);
+                if (!(EndPoint is null))
+                    udpListener.BeginSend(packet.ToArray(), packet.Length(), EndPoint, null, null);
             }
             catch (Exception ex)
             {
                 log.Error($"There was an error trying to send UDP data to the client with id: {serverClient.Id}.", ex);
-                log.Info($"The UDP socket will be closed.");
-                Disconnect();
-
                 options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.SendDataUDP, ex);
             }
         }
@@ -67,9 +57,9 @@ namespace SimpleNetworking.Server
         {
             log.Debug($"Received new UDP data from client: {serverClient.Id}.");
 
-            log.Debug("Reading packet length.");
             int packetLength = receivedData.ReadInt();
             log.Debug($"Packet length is: {packetLength}");
+
             if (packetLength <= 0) return;
 
             byte[] packetBytes = receivedData.ReadBytes(packetLength);
@@ -78,11 +68,8 @@ namespace SimpleNetworking.Server
 
             log.Debug("Creating new packet with the received UDP data and calling DataReceivedCallback.");
 
-            threadManager.ExecuteOnMainThread(() =>
-            {
-                using var packet = new Packet(packetBytes);
-                options.DataReceivedCallback(serverClient.Id, packet);
-            });
+            using var packet = new Packet(packetBytes);
+            options.DataReceivedCallback(serverClient.Id, packet);
         }
     }
 }

@@ -6,7 +6,7 @@ namespace SimpleNetworking.Server
     public sealed class ClientInfo
     {
         /// <summary>The id this client was assigned by the server.</summary>
-        public uint AssignedId { get; private set; }
+        public int AssignedId { get; private set; }
         /// <summary>The ip address of this client. This value is set upon connection and it will exists until this instance is destroyed.</summary>
         public string IpAddress { get; private set; }
         /// <summary>The port on which the client is connected. This value is set upon connection and it will exists until this instance is destroyed.</summary>
@@ -19,14 +19,16 @@ namespace SimpleNetworking.Server
         public bool HasActiveTcpConnection { get; internal set; }
         /// <summary>Whether a Udp connection has been established.</summary>
         public bool HasActiveUdpConnection { get; internal set; }
+        /// <summary>Public variable to hold any aditional data related to this client.</summary>
+        public object ClientData { get; set; }
 
-        internal ClientInfo(uint assignedId)
+        internal ClientInfo(int assignedId)
         {
             AssignedId = assignedId;
         }
 
-        internal ClientInfo(uint assignedId, TcpClient client)
-            :this(assignedId)
+        internal ClientInfo(int assignedId, TcpClient client)
+            : this(assignedId)
         {
             if (client.Client.RemoteEndPoint is IPEndPoint endPoint)
             {

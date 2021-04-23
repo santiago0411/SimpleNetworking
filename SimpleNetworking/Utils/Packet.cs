@@ -9,6 +9,7 @@ namespace SimpleNetworking.Utils
         private List<byte> buffer;
         private byte[] readableBuffer;
         private int readPos;
+        private bool lengthWritten = false;
 
         /// <summary>Creates a new empty packet (without an ID).</summary>
         public Packet()
@@ -49,18 +50,20 @@ namespace SimpleNetworking.Utils
         /// <summary>Inserts the length of the packet's content at the start of the buffer.</summary>
         internal void WriteLength()
         {
-            buffer.InsertRange(0, BitConverter.GetBytes(buffer.Count)); // Insert the byte length of the packet at the very beginning
+            if (!lengthWritten)
+            {
+                buffer.InsertRange(0, BitConverter.GetBytes(buffer.Count)); // Insert the byte length of the packet at the very beginning
+                lengthWritten = true;
+            }
         }
 
-        /// <summary>Inserts the given short at the start of the buffer.</summary>
-        /// <param name="value">The short to insert.</param>
-        public void InsertShort(short value)
+        /// <summary>Inserts the given data buffer at the start of the packet.</summary>
+        public void InsertBytes(byte[] data)
         {
-            buffer.InsertRange(0, BitConverter.GetBytes(value)); // Insert the short at the start of the buffer
+            buffer.InsertRange(0, data);
         }
 
-        /// <summary>Inserts the given int at the start of the buffer.</summary>
-        /// <param name="value">The int to insert.</param>
+        /// <summary>Inserts the given int at the start of the buffer. Used to write the client id at the front of a packet.</summary>
         public void InsertInt(int value)
         {
             buffer.InsertRange(0, BitConverter.GetBytes(value)); // Insert the int at the start of the buffer
