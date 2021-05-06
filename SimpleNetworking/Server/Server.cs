@@ -419,7 +419,7 @@ namespace SimpleNetworking.Server
                     serverClient.ClientInfo.UdpEndPoint = clientEndPoint;
                 }
 
-                if (serverClient.Udp.EndPoint.Equals(clientEndPoint))
+                if (serverClient.Udp.EndPoint.Equals(clientEndPoint) && packet.UnreadLength() > 0)
                 {
                     serverClient.Udp.HandleData(packet);
                     return;
