@@ -6,7 +6,7 @@ namespace ServerTests
 {
     public class ServerTests
     {
-        private static Server server = null;
+        private static Server server;
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ServerTests));
 
         private static void Main(string[] args)
@@ -17,7 +17,6 @@ namespace ServerTests
             try
             {
                 server.Listen();
-                Console.WriteLine("Asdasdasdasd");
             }
             catch (Exception ex)
             {
@@ -64,7 +63,7 @@ namespace ServerTests
             using var packet = new Packet();
             packet.Write(clientInfo.AssignedId);
             packet.Write("Welcome to the server!");
-            server.SendPacketTCP(clientInfo.AssignedId, packet);
+            server.SendPacketTcp(clientInfo.AssignedId, packet);
         }
 
         private static void OnClientDisconnected(ClientInfo clientInfo, ServerProtocol protocol)

@@ -4,20 +4,20 @@ using SimpleNetworking.Utils;
 
 namespace SimpleNetworking.Server
 {
-    internal class ServerTCP
+    internal class ServerTcp
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ServerTCP));
+        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ServerTcp));
 
         public TcpClient Socket { get; private set; }
 
-        private NetworkStream stream = null;
-        private Packet receivedData = null;
-        private byte[] receiveBuffer = null;
+        private NetworkStream stream;
+        private Packet receivedData;
+        private byte[] receiveBuffer;
 
         private readonly ServerClient serverClient;
         private readonly ServerOptions options;
 
-        public ServerTCP(ServerClient serverClient, ServerOptions options)
+        public ServerTcp(ServerClient serverClient, ServerOptions options)
         {
             this.serverClient = serverClient;
             this.options = options;
@@ -48,7 +48,7 @@ namespace SimpleNetworking.Server
             {
                 log.Error($"There was an error trying to establish a TCP connection to the client with id: {serverClient.Id}. The TCP socket of this client will be closed.", ex);
                 serverClient.Disconnect(false);
-                options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.ConnectTCP, ex);
+                options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.ConnectTcp, ex);
             }
         }
 
@@ -93,7 +93,7 @@ namespace SimpleNetworking.Server
                     serverClient.Disconnect();
                 }
 
-                options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.SendDataTCP, ex);
+                options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.SendDataTcp, ex);
             }
         }
 
@@ -136,7 +136,7 @@ namespace SimpleNetworking.Server
                     serverClient.Disconnect();
                 }
 
-                options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.ReceiveDataTCP, ex);
+                options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.ReceiveDataTcp, ex);
             }
         }
     }

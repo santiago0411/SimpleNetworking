@@ -12,7 +12,7 @@ namespace SimpleNetworking.Server
     public enum ServerProtocol { Tcp, Udp, Both }
 
     /// <summary>The operations that can fail and raise a NetworkOperationFailedCallback.</summary>
-    public enum FailedOperation { ConnectTCP, SendDataTCP, ReceiveDataTCP, SendDataUDP }
+    public enum FailedOperation { ConnectTcp, SendDataTcp, ReceiveDataTcp, SendDataUdp }
 
     public sealed class Server
     {
@@ -21,14 +21,16 @@ namespace SimpleNetworking.Server
         /// <summary>The port this server is listening on.</summary>
         public ushort Port => Options.Port;
 
-        private Thread internalThread = null;
-        private TcpListener tcpListener = null;
+        private Thread internalThread;
+        private TcpListener tcpListener;
 
-        internal UdpClient UdpListener { get; private set; } = null;
-        internal ServerOptions Options { get; private set; } = null;
+        internal UdpClient UdpListener { get; private set; }
+        internal ServerOptions Options { get; }
 
+        private bool running;
+        
         private readonly Dictionary<int, ServerClient> clients = new Dictionary<int, ServerClient>();
-        private readonly ServerClientsIdAssigner idAssigner = null;
+        private readonly ServerClientsIdAssigner idAssigner;
 
         public Server(ushort port, Action<int, Packet> dataReceivedCallback)
             : this(new ServerOptions
@@ -45,13 +47,13 @@ namespace SimpleNetworking.Server
         public Server(ServerOptions options)
         {
             if (options is null)
-                throw new ArgumentNullException("ServerOptions was null.");
+                throw new ArgumentNullException(nameof(options));
 
             if (options.IPAddress is null)
-                throw new ArgumentNullException("IPAddress was null.");
+                throw new ArgumentNullException(nameof(options.IPAddress));
 
             if (options.DataReceivedCallback is null)
-                throw new ArgumentNullException("DataReceivedCallback was null.");
+                throw new ArgumentNullException(nameof(options.DataReceivedCallback));
 
             if (options.ReceiveDataBufferSize <= 0)
                 throw new InvalidOptionsException("The ReceiveDataBufferSize value cannot be smaller than 1.");
@@ -66,7 +68,7 @@ namespace SimpleNetworking.Server
                 throw new InvalidOptionsException("The SendDataTimeout value cannot be smaller than 0.");
 
             if ((int)options.Protocol > 2)
-                throw new InvalidOptionsException("Procotol does not contain a valid option.");
+                throw new InvalidOptionsException("Protocol does not contain a valid option.");
 
             if (options.InternalThreadRefreshRate < 0)
                 throw new InvalidOptionsException("The MainThreadRefreshRate value cannot be smaller than 0.");
@@ -98,14 +100,14 @@ namespace SimpleNetworking.Server
                     log.Info("Starting TCP listener...");
                     tcpListener = new TcpListener(Options.IPAddress, Port);
                     tcpListener.Start();
-                    tcpListener.BeginAcceptTcpClient(TCPConnectCallback, null);
+                    tcpListener.BeginAcceptTcpClient(TcpConnectCallback, null);
                 }
 
                 if (Options.Protocol != ServerProtocol.Tcp)
                 {
                     log.Info("Starting UDP listener...");
                     UdpListener = new UdpClient(Port);
-                    UdpListener.BeginReceive(UDPReceiveCallback, null);
+                    UdpListener.BeginReceive(UdpReceiveCallback, null);
                 }
             });
         }
@@ -114,18 +116,21 @@ namespace SimpleNetworking.Server
         public void Stop()
         {
             log.Info("Disconnecting all clients.");
-
-            foreach (var entry in clients)
+            
+            var clientsList = new List<ServerClient>(clients.Values);
+            
+            foreach (var client in clientsList)
             {
-                entry.Value.Disconnect(false);
-                idAssigner.FreeId(entry.Key);
+                client.Disconnect(false);
+                idAssigner.FreeId(client.Id);
             }
 
-            log.Info("Stoping TCP and UDP listeners...");
+            log.Info("Stopping TCP and UDP listeners...");
             tcpListener?.Stop();
             UdpListener?.Close();
             log.Info("TCP and UDP listeners have been stopped.");
 
+            running = false;
             log.Info("Stopping main thread and joining...");
             internalThread.Join();
         }
@@ -179,14 +184,14 @@ namespace SimpleNetworking.Server
         /// <param name="toClient">The client to which the packet should be sent.</param>
         /// <param name="packet">The packet to send.</param>
         /// <exception cref="InvalidProtocolException">Thrown when the server is not configured to use TCP.</exception>
-        public void SendPacketTCP(int toClient, Packet packet)
+        public void SendPacketTcp(int toClient, Packet packet)
         {
             if (Options.Protocol == ServerProtocol.Udp)
                 throw new InvalidProtocolException("Cannot send TCP data the server protocol is set to UDP only.");
 
             if (clients.TryGetValue(toClient, out ServerClient client))
             {
-                if (!client.IsConnectedTCP())
+                if (!client.IsConnectedTcp())
                 {
                     log.Error($"Cannot send TCP data to client: {toClient} because it doesn't have an active TCP connection.");
                     return;
@@ -203,7 +208,7 @@ namespace SimpleNetworking.Server
         /// <summary>Sends a packet via TCP to all the connected clients.</summary>
         /// <param name="packet">The packet to send.</param>
         /// <exception cref="InvalidProtocolException">Thrown when the server is not configured to use TCP.</exception>
-        public void SendPacketTCPToAll(Packet packet)
+        public void SendPacketTcpToAll(Packet packet)
         {
             if (Options.Protocol == ServerProtocol.Udp)
                 throw new InvalidProtocolException("Cannot send TCP data the server protocol is set to UDP only.");
@@ -212,7 +217,7 @@ namespace SimpleNetworking.Server
 
             foreach (var client in clients.Values)
             {
-                if (client.IsConnectedTCP())
+                if (client.IsConnectedTcp())
                     client.Tcp.SendData(packet);
             }
         }
@@ -221,7 +226,7 @@ namespace SimpleNetworking.Server
         /// <param name="packet">The packet to send.</param>
         /// <param name="exceptClient">The client to skip sending the data.</param>
         /// <exception cref="InvalidProtocolException">Thrown when the server is not configured to use TCP.</exception>
-        public void SendPacketTCPToAll(Packet packet, int exceptClient)
+        public void SendPacketTcpToAll(Packet packet, int exceptClient)
         {
             if (Options.Protocol == ServerProtocol.Udp)
                 throw new InvalidProtocolException("Cannot send TCP data the server protocol is set to UDP only.");
@@ -230,7 +235,7 @@ namespace SimpleNetworking.Server
 
             foreach (var client in clients.Values)
             {
-                if (client.IsConnectedTCP() && client.Id != exceptClient)
+                if (client.IsConnectedTcp() && client.Id != exceptClient)
                     client.Tcp.SendData(packet);
             }
         }
@@ -239,7 +244,7 @@ namespace SimpleNetworking.Server
         /// <param name="toClient">The client to which the packet should be sent.</param>
         /// <param name="packet">The packet to send.</param>
         /// <exception cref="InvalidProtocolException">Thrown when the server is not configured to use UDP.</exception>
-        public void SendPacketUDP(int toClient, Packet packet)
+        public void SendPacketUdp(int toClient, Packet packet)
         {
             if (Options.Protocol == ServerProtocol.Tcp)
                 throw new InvalidProtocolException("Cannot send UDP data the server protocol is set to TCP only.");
@@ -257,7 +262,7 @@ namespace SimpleNetworking.Server
         /// <summary>Sends a packet via UDP to all the connected clients.</summary>
         /// <param name="packet">The packet to send.</param>
         /// <exception cref="InvalidProtocolException">Thrown when the server is not configured to use TCP.</exception>
-        public void SendPacketUDPToAll(Packet packet)
+        public void SendPacketUdpToAll(Packet packet)
         {
             if (Options.Protocol == ServerProtocol.Tcp)
                 throw new InvalidProtocolException("Cannot send UDP data the server protocol is set to TCP only.");
@@ -272,7 +277,7 @@ namespace SimpleNetworking.Server
         /// <param name="packet">The packet to send.</param>
         /// <param name="exceptClient">The client to skip sending the data.</param>
         /// <exception cref="InvalidProtocolException">Thrown when the server is not configured to use TCP.</exception>
-        public void SendPacketUDPToAll(Packet packet, int exceptClient)
+        public void SendPacketUdpToAll(Packet packet, int exceptClient)
         {
             if (Options.Protocol == ServerProtocol.Tcp)
                 throw new InvalidProtocolException("Cannot send UDP data the server protocol is set to TCP only.");
@@ -289,11 +294,12 @@ namespace SimpleNetworking.Server
         private void StartThread(Action startServer)
         {
             log.Debug("Starting new thread.");
-            internalThread = new Thread(new ThreadStart(() =>
+            internalThread = new Thread(() =>
             {
                 startServer();
                 DateTime nextLoop = DateTime.Now;
-                while (true)
+                running = true;
+                while (running)
                 {
                     while (nextLoop < DateTime.Now)
                     {
@@ -303,17 +309,17 @@ namespace SimpleNetworking.Server
                             Thread.Sleep(nextLoop - DateTime.Now);
                     }
                 }
-            }));
+            });
 
             internalThread.Start();
         }
 
-        private void TCPConnectCallback(IAsyncResult result)
+        private void TcpConnectCallback(IAsyncResult result)
         {
             log.Debug("New TCP connection received.");
 
             TcpClient client = tcpListener.EndAcceptTcpClient(result);
-            tcpListener.BeginAcceptTcpClient(TCPConnectCallback, null);
+            tcpListener.BeginAcceptTcpClient(TcpConnectCallback, null);
 
             if (!idAssigner.FindAvailableId(out int availableId))
             {
@@ -358,7 +364,7 @@ namespace SimpleNetworking.Server
             Options.ClientConnectionEstablishedCallback?.Invoke(serverClient.ClientInfo);
         }
 
-        private void UDPReceiveCallback(IAsyncResult result)
+        private void UdpReceiveCallback(IAsyncResult result)
         {
             log.Debug("New UDP data received.");
 
@@ -369,7 +375,7 @@ namespace SimpleNetworking.Server
             {
                 clientEndPoint = new IPEndPoint(IPAddress.Any, 0);
                 data = UdpListener.EndReceive(result, ref clientEndPoint);
-                UdpListener.BeginReceive(UDPReceiveCallback, null);
+                UdpListener.BeginReceive(UdpReceiveCallback, null);
             }
             catch (Exception ex)
             {
@@ -443,23 +449,25 @@ namespace SimpleNetworking.Server
 
             public bool FindAvailableId(out int id)
             {
-                id = 0;
-
                 for (int i = 1; i <= locks.Length; i++)
                 {
-                    if (Interlocked.CompareExchange(ref locks[i - 1], 1, 0) == 0)
+                    ref int lck = ref locks[i - 1];
+                    
+                    if (lck == 0)
                     {
+                        lck = 1;
                         id = i;
                         return true;
                     }
                 }
-
+                
+                id = default;
                 return false;
             }
 
             public void FreeId(int id)
             {
-                Interlocked.Exchange(ref locks[id - 1], 0);
+                locks[id - 1] = 0;
             }
         }
     }

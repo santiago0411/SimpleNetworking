@@ -5,9 +5,9 @@ using SimpleNetworking.Utils;
 
 namespace SimpleNetworking.Server
 {
-    internal class ServerUDP
+    internal class ServerUdp
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ServerUDP));
+        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ServerUdp));
 
         public IPEndPoint EndPoint { get; private set; }
 
@@ -15,7 +15,7 @@ namespace SimpleNetworking.Server
         private readonly ServerOptions options;
         private readonly UdpClient udpListener;
 
-        public ServerUDP(ServerClient serverClient, ServerOptions options, UdpClient udpListener)
+        public ServerUdp(ServerClient serverClient, ServerOptions options, UdpClient udpListener)
         {
             this.serverClient = serverClient;
             this.options = options;
@@ -49,7 +49,7 @@ namespace SimpleNetworking.Server
             catch (Exception ex)
             {
                 log.Error($"There was an error trying to send UDP data to the client with id: {serverClient.Id}.", ex);
-                options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.SendDataUDP, ex);
+                options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.SendDataUdp, ex);
             }
         }
 

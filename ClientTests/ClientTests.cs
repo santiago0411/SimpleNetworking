@@ -6,7 +6,7 @@ namespace ClientTests
 {
     public class ClientTests
     {
-        private static Client client = null;
+        private static Client client;
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ClientTests));
 
         private static void Main(string[] args)
@@ -16,8 +16,8 @@ namespace ClientTests
 
             try
             {
-                client.ConnectToServerTCP();
-                client.ConnectToServerUDP();
+                client.ConnectToServerTcp();
+                client.ConnectToServerUdp();
 
                 /*using var p = new Packet();
                 p.Write("This is the client sending data to the UDP only server.");
@@ -52,7 +52,7 @@ namespace ClientTests
 
             using var p = new Packet();
             p.Write($"Hi server, this is client: {id}.");
-            client.SendPacketUDP(p);
+            client.SendPacketUdp(p);
             //client.SendPacketUDP(p, false);
         }
     }

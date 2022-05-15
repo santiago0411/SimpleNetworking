@@ -9,7 +9,7 @@ namespace SimpleNetworking.Client
     public enum Protocol { Tcp, Udp, Both }
 
     /// <summary>The operations that can fail and raise a NetworkOperationFailedCallback.</summary>
-    public enum FailedOperation { SendDataTCP, ReceiveDataTCP, SendDataUDP, ReceiveDataUDP }
+    public enum FailedOperation { SendDataTcp, ReceiveDataTcp, SendDataUdp, ReceiveDataUdp }
 
     public sealed class Client
     {
@@ -20,12 +20,13 @@ namespace SimpleNetworking.Client
         /// <summary>Contains whether a Tcp connection has been established and is active.</summary>
         public bool IsConnected { get; internal set; }
 
-        internal ClientOptions Options { get; private set; } = null;
+        internal ClientOptions Options { get; }
 
-        internal ClientTCP tcp = null;
-        internal ClientUDP udp = null;
-
-        private Thread mainThread = null;
+        private Thread mainThread;
+        private bool running;
+        
+        private readonly ClientTcp tcp;
+        private readonly ClientUdp udp;
 
         public Client(string ipAddress, ushort port, Action<Packet> dataReceivedCallback) :
             this(new ClientOptions 
@@ -43,13 +44,13 @@ namespace SimpleNetworking.Client
         public Client(ClientOptions options)
         {
             if (options is null)
-                throw new ArgumentNullException("ClientOptions was null.");
+                throw new ArgumentNullException(nameof(Options));
 
             if (options.IPAddress is null)
-                throw new ArgumentNullException("IPAddress was null.");
+                throw new ArgumentNullException(nameof(options.IPAddress));
 
             if (options.DataReceivedCallback is null)
-                throw new ArgumentNullException("DataReceivedCallback was null.");
+                throw new ArgumentNullException(nameof(options.DataReceivedCallback));
 
             if (options.ReceiveDataBufferSize <= 0)
                 throw new InvalidOptionsException("The ReceiveDataBufferSize value cannot be smaller than 1.");
@@ -72,13 +73,14 @@ namespace SimpleNetworking.Client
             LoggerConfig.CheckLoggerConfig(options.InternalLoggingLevel);
 
             Options = options;
-            tcp = new ClientTCP(this);
-            udp = new ClientUDP(this);
+            tcp = new ClientTcp(this);
+            udp = new ClientUdp(this);
 
             StartThread(() =>
             {
                 DateTime nextLoop = DateTime.Now;
-                while (true)
+                running = true;
+                while (running)
                 {
                     while (nextLoop < DateTime.Now)
                     {
@@ -90,15 +92,15 @@ namespace SimpleNetworking.Client
                 }
             });
         }
-
+        
         /// <summary>Attempts to connect to the server via TCP.</summary>
-        public void ConnectToServerTCP()
+        public void ConnectToServerTcp()
         {
             tcp.Connect();
         }
 
         /// <summary>Attempts to connect to the server via UDP.</summary>
-        public void ConnectToServerUDP()
+        public void ConnectToServerUdp()
         {
             udp.Connect();
         }
@@ -111,19 +113,20 @@ namespace SimpleNetworking.Client
             udp?.Disconnect(false);
             Options.ClientDisconnectedCallback?.Invoke(Protocol.Both);
 
+            running = false;
             log.Info("Stopping main thread and joining...");
             mainThread.Join();
         }
 
         /// <summary>Sends a packet via TCP.</summary>
-        public void SendPacketTCP(Packet packet)
+        public void SendPacketTcp(Packet packet)
         {
             log.Debug($"Sending TCP data to server.");
             tcp.SendData(packet);
         }
 
         /// <summary>Sends a packet via UDP.</summary>
-        public void SendPacketUDP(Packet packet, bool writeId = true)
+        public void SendPacketUdp(Packet packet, bool writeId = true)
         {
             log.Debug($"Sending UDP data to server.");
             udp.SendData(packet, writeId);

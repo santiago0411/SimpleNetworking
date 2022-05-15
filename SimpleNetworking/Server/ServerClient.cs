@@ -4,12 +4,12 @@
     {
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ServerClient));
 
-        public int Id { get; private set; }
-        public ServerTCP Tcp { get; private set; }
-        public ServerUDP Udp { get; private set; }
+        public int Id { get; }
+        public ServerTcp Tcp { get; }
+        public ServerUdp Udp { get; }
         public ClientInfo ClientInfo { get; set; }
 
-        private readonly Server server = null;
+        private readonly Server server;
 
         internal ServerClient(int id, Server server)
         {
@@ -17,17 +17,15 @@
             this.server = server;
 
             if (server.Options.Protocol != ServerProtocol.Udp)
-                Tcp = new ServerTCP(this, server.Options);
+                Tcp = new ServerTcp(this, server.Options);
 
             if (server.Options.Protocol != ServerProtocol.Tcp)
-                Udp = new ServerUDP(this, server.Options, server.UdpListener);
+                Udp = new ServerUdp(this, server.Options, server.UdpListener);
         }
 
-        public bool IsConnectedTCP()
+        public bool IsConnectedTcp()
         {
-            if (Tcp is null) return false;
-            if (Tcp.Socket is null) return false;
-            return Tcp.Socket.Connected;
+            return Tcp?.Socket is { } && Tcp.Socket.Connected;
         }
 
         public void Disconnect(bool invokeCallback = true)

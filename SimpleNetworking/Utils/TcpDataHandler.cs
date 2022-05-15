@@ -37,7 +37,8 @@ namespace SimpleNetworking.Utils
                 if (receivedData.UnreadLength() >= 4)
                 {
                     packetLength = receivedData.ReadInt();
-                    if (packetLength <= 0) return true;
+                    if (packetLength <= 0) 
+                        return true;
                 }
             }
 

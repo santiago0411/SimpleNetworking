@@ -4,19 +4,19 @@ using SimpleNetworking.Utils;
 
 namespace SimpleNetworking.Client
 {
-    internal class ClientTCP
+    internal class ClientTcp
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ClientTCP));
+        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ClientTcp));
 
         public TcpClient Socket { get; private set; }
 
-        private NetworkStream stream = null;
-        private Packet receivedData = null;
-        private byte[] receiveBuffer = null;
+        private NetworkStream stream;
+        private Packet receivedData;
+        private byte[] receiveBuffer;
 
-        private readonly Client client = null;
+        private readonly Client client;
 
-        public ClientTCP(Client client)
+        public ClientTcp(Client client)
         {
             this.client = client;
         }
@@ -90,7 +90,7 @@ namespace SimpleNetworking.Client
                     client.Disconnect();
                 }
 
-                client.Options.NetworkOperationFailedCallback?.Invoke(FailedOperation.SendDataTCP, ex);
+                client.Options.NetworkOperationFailedCallback?.Invoke(FailedOperation.SendDataTcp, ex);
             }
         }
 
@@ -133,7 +133,7 @@ namespace SimpleNetworking.Client
                     client.Disconnect();
                 }
 
-                client.Options.NetworkOperationFailedCallback?.Invoke(FailedOperation.ReceiveDataTCP, ex);
+                client.Options.NetworkOperationFailedCallback?.Invoke(FailedOperation.ReceiveDataTcp, ex);
             }
         }
     }

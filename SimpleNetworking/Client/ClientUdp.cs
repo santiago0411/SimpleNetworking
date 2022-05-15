@@ -5,17 +5,17 @@ using SimpleNetworking.Utils;
 
 namespace SimpleNetworking.Client
 {
-    internal class ClientUDP
+    internal class ClientUdp
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ClientUDP));
+        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ClientUdp));
 
         public UdpClient Socket { get; private set; }
 
-        private IPEndPoint endPoint = null;
+        private IPEndPoint endPoint;
 
-        private readonly Client client = null;
+        private readonly Client client;
 
-        public ClientUDP(Client client)
+        public ClientUdp(Client client)
         {
             this.client = client;
             endPoint = new IPEndPoint(IPAddress.Parse(client.Options.IPAddress), client.Options.Port);
@@ -67,7 +67,7 @@ namespace SimpleNetworking.Client
                 log.Info($"The UDP socket will be closed.");
                 Disconnect();
 
-                client.Options.NetworkOperationFailedCallback?.Invoke(FailedOperation.SendDataUDP, ex);
+                client.Options.NetworkOperationFailedCallback?.Invoke(FailedOperation.SendDataUdp, ex);
             }
         }
 
@@ -94,7 +94,7 @@ namespace SimpleNetworking.Client
                 log.Info($"The UDP socket will be closed.");
                 Disconnect();
 
-                client.Options.NetworkOperationFailedCallback?.Invoke(FailedOperation.SendDataUDP, ex);
+                client.Options.NetworkOperationFailedCallback?.Invoke(FailedOperation.SendDataUdp, ex);
             }
         }
 
