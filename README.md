@@ -36,6 +36,8 @@ finally
 }
 ```
 
+## Callback Functions Note
+
 **IMPORTANT: The callback functions for both clients and servers will be executed on the internal thread. If you wish to execute actions on the main thread, you will have to do it manually with a queue after receiving such callbacks.**
 
 ## Packet Sending
