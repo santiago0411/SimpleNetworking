@@ -1,4 +1,5 @@
 ﻿using System;
+using SimpleNetworking.Utils;
 
 namespace SimpleNetworking.Server
 {
@@ -37,8 +38,8 @@ namespace SimpleNetworking.Server
         /// <summary>(OPTIONAL) Indicates whether the clients are automatically disconnected when an error occurs trying to read or send data. The default value is true.</summary>
         public bool DisconnectClientOnError { get; set; } = true;
 
-        /// <summary> The depth level of internal logging. The default value is All.</summary>
-        public log4net.Core.Level InternalLoggingLevel { get; set; } = log4net.Core.Level.All;
+        /// <summary> (OPTIONAL) An ILogger implementation for internal logging.</summary>
+        public ILogger Logger { get; set; }
 
         /// <summary>Callback to execute when a new packet is received from a client. Arg1 is the client's assigned Id. Arg2 is the received data.</summary>
         public Action<int, Utils.Packet> DataReceivedCallback { get; set; } = null;

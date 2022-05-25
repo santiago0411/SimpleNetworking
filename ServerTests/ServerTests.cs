@@ -6,12 +6,11 @@ namespace ServerTests
 {
     public class ServerTests
     {
+        private static readonly ConsoleLogger logger = new ConsoleLogger();
         private static Server server;
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ServerTests));
 
         private static void Main(string[] args)
         {
-            log4net.Config.XmlConfigurator.Configure(new System.IO.FileInfo("log4net.config"));
             server = new Server(CreateOptions());
 
             try
@@ -42,7 +41,7 @@ namespace ServerTests
                 ServerIsFullCallback = OnServerFull,
                 //UDPDataReceivedCallback = OnReceiveUdpData,
                 //RequireClientToSendIdInUdpData = false,
-                InternalLoggingLevel = log4net.Core.Level.Info,
+                Logger = logger,
                 ReceiveDataBufferSize = 4096,
                 SendDataBufferSize = 4096,
                 ReceiveDataTimeout = 0,
@@ -53,7 +52,7 @@ namespace ServerTests
 
         private static bool OnClientConnected(ClientInfo clientInfo)
         {
-            log.Info($"Authenticating client: {clientInfo.TcpEndPoint.Address} with id {clientInfo.AssignedId}");
+            logger.Info($"Authenticating client: {clientInfo.TcpEndPoint.Address} with id {clientInfo.AssignedId}");
             return true;
         }
 
@@ -68,30 +67,30 @@ namespace ServerTests
 
         private static void OnClientDisconnected(ClientInfo clientInfo, ServerProtocol protocol)
         {
-            log.Info($"Client {clientInfo.AssignedId} with ip {clientInfo.IpAddress} has disconnected.");
+            logger.Info($"Client {clientInfo.AssignedId} with ip {clientInfo.IpAddress} has disconnected.");
         }
 
         private static void OnDataReceived(int clientId, Packet packet)
         {
-            log.Info($"Received message from client: {clientId} - {packet.ReadString()}");
+            logger.Info($"Received message from client: {clientId} - {packet.ReadString()}");
         }
 
         private static void OnReceiveUdpData(Packet packet)
         {
-            log.Info($"Manually parsing the whole UDP packet.");
-            log.Info($"Client id is: {packet.ReadInt()}");
-            log.Info($"Packet length is: {packet.ReadInt()}");
-            log.Info($"Received UDP data: {packet.ReadString()}");
+            logger.Info($"Manually parsing the whole UDP packet.");
+            logger.Info($"Client id is: {packet.ReadInt()}");
+            logger.Info($"Packet length is: {packet.ReadInt()}");
+            logger.Info($"Received UDP data: {packet.ReadString()}");
         }
 
         private static void OnNetworkOperationFailed(ClientInfo clientInfo, FailedOperation failedOperation, Exception ex)
         {
-            log.Error($"There was an error on {failedOperation} for client {clientInfo.AssignedId}: {ex.Message}");
+            logger.Error($"There was an error on {failedOperation} for client {clientInfo.AssignedId}: {ex.Message}");
         }
 
         private static void OnServerFull()
         {
-            log.Warn("Server is full!!");
+            logger.Warn("Server is full!!");
         }
     }
 }

@@ -1,13 +1,14 @@
-﻿namespace SimpleNetworking.Server
+﻿using SimpleNetworking.Utils;
+
+namespace SimpleNetworking.Server
 {
     internal class ServerClient
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ServerClient));
-
         public int Id { get; }
         public ServerTcp Tcp { get; }
         public ServerUdp Udp { get; }
         public ClientInfo ClientInfo { get; set; }
+        public InternalLogger Logger => server.Logger;
 
         private readonly Server server;
 
@@ -32,15 +33,14 @@
         {
             Tcp?.Disconnect(false);
             Udp?.Disconnect(false);
-
-            ClientInfo = null;
-
+            
             if (invokeCallback)
             {
-                log.Debug("Invoking ClientDisconnectedCallback.");
+                server.Logger.Debug("Invoking ClientDisconnectedCallback.");
                 server.Options.ClientDisconnectedCallback?.Invoke(ClientInfo, ServerProtocol.Both);
             }
-
+            
+            ClientInfo = null;
             server.RemoveClient(Id);
         }
     }

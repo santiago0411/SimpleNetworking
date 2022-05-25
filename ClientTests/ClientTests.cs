@@ -6,12 +6,11 @@ namespace ClientTests
 {
     public class ClientTests
     {
+        private static readonly ConsoleLogger logger = new ConsoleLogger();
         private static Client client;
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ClientTests));
 
         private static void Main(string[] args)
         {
-            log4net.Config.XmlConfigurator.Configure(new System.IO.FileInfo("log4net.config"));
             client = new Client(CreateOptions());
 
             try
@@ -46,9 +45,9 @@ namespace ClientTests
         private static void ReceivedData(Packet packet)
         {
             int id = packet.ReadInt();
-            log.Info($"Id is: {id}");
+            logger.Info($"Id is: {id}");
             client.Id = 1;
-            log.Info($"Received string: {packet.ReadString()}");
+            logger.Info($"Received string: {packet.ReadString()}");
 
             using var p = new Packet();
             p.Write($"Hi server, this is client: {id}.");

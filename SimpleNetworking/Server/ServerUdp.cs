@@ -7,8 +7,6 @@ namespace SimpleNetworking.Server
 {
     internal class ServerUdp
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ServerUdp));
-
         public IPEndPoint EndPoint { get; private set; }
 
         private readonly ServerClient serverClient;
@@ -31,7 +29,7 @@ namespace SimpleNetworking.Server
         {
             EndPoint = null;
             serverClient.ClientInfo.HasActiveUdpConnection = false;
-            log.Info("UDP EndPoint disconnected.");
+            serverClient.Logger.Info("UDP EndPoint disconnected.");
 
             if (invokeCallback)
                 options.ClientDisconnectedCallback?.Invoke(serverClient.ClientInfo, ServerProtocol.Udp);
@@ -48,25 +46,25 @@ namespace SimpleNetworking.Server
             }
             catch (Exception ex)
             {
-                log.Error($"There was an error trying to send UDP data to the client with id: {serverClient.Id}.", ex);
+                serverClient.Logger.Error($"There was an error trying to send UDP data to the client with id: {serverClient.Id}.\n{ex}");
                 options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.SendDataUdp, ex);
             }
         }
 
         public void HandleData(Packet receivedData)
         {
-            log.Debug($"Received new UDP data from client: {serverClient.Id}.");
+            serverClient.Logger.Debug($"Received new UDP data from client: {serverClient.Id}.");
 
             int packetLength = receivedData.ReadInt();
-            log.Debug($"Packet length is: {packetLength}");
+            serverClient.Logger.Debug($"Packet length is: {packetLength}");
 
             if (packetLength <= 0) return;
 
             byte[] packetBytes = receivedData.ReadBytes(packetLength);
 
-            log.Debug($"Raw data is [{BitConverter.ToString(packetBytes).Replace("-", "")}].");
+            serverClient.Logger.Debug($"Raw data is [{BitConverter.ToString(packetBytes).Replace("-", "")}].");
 
-            log.Debug("Creating new packet with the received UDP data and calling DataReceivedCallback.");
+            serverClient.Logger.Debug("Creating new packet with the received UDP data and calling DataReceivedCallback.");
 
             using var packet = new Packet(packetBytes);
             options.DataReceivedCallback(serverClient.Id, packet);

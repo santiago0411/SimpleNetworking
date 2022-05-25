@@ -13,14 +13,13 @@ namespace SimpleNetworking.Client
 
     public sealed class Client
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(Client));
-
         /// <summary>The id assigned by the server. Must be set by the user, it is NOT set automatically.</summary>
         public int Id { get; set; }
         /// <summary>Contains whether a Tcp connection has been established and is active.</summary>
         public bool IsConnected { get; internal set; }
 
         internal ClientOptions Options { get; }
+        internal InternalLogger Logger { get; private set; }
 
         private Thread mainThread;
         private bool running;
@@ -70,7 +69,7 @@ namespace SimpleNetworking.Client
             if (options.DataReceivedCallback is null)
                 throw new InvalidOptionsException("The DataReceivedCallback cannot be null because data will not be able to be sent back.");
 
-            LoggerConfig.CheckLoggerConfig(options.InternalLoggingLevel);
+            Logger = new InternalLogger(options.Logger);
 
             Options = options;
             tcp = new ClientTcp(this);
@@ -92,6 +91,11 @@ namespace SimpleNetworking.Client
                 }
             });
         }
+
+        public void SetLogger(ILogger logger)
+        {
+            Logger = new InternalLogger(logger);
+        }
         
         /// <summary>Attempts to connect to the server via TCP.</summary>
         public void ConnectToServerTcp()
@@ -108,34 +112,34 @@ namespace SimpleNetworking.Client
         /// <summary>Disconnects the client from the server and raises the ClientDisconnectedCallback.</summary>
         public void Disconnect()
         {
-            log.Info("Disconnecting client...");
+            Logger.Info("Disconnecting client...");
             tcp?.Disconnect(false);
             udp?.Disconnect(false);
             Options.ClientDisconnectedCallback?.Invoke(Protocol.Both);
 
             running = false;
-            log.Info("Stopping main thread and joining...");
+            Logger.Info("Stopping main thread and joining...");
             mainThread.Join();
         }
 
         /// <summary>Sends a packet via TCP.</summary>
         public void SendPacketTcp(Packet packet)
         {
-            log.Debug($"Sending TCP data to server.");
+            Logger.Debug($"Sending TCP data to server.");
             tcp.SendData(packet);
         }
 
         /// <summary>Sends a packet via UDP.</summary>
         public void SendPacketUdp(Packet packet, bool writeId = true)
         {
-            log.Debug($"Sending UDP data to server.");
+            Logger.Debug($"Sending UDP data to server.");
             udp.SendData(packet, writeId);
         }
 
         private void StartThread(Action startClient)
         {
-            log.Debug("Starting new thread.");
-            mainThread = new Thread(new ThreadStart(() => startClient()));
+            Logger.Debug("Starting new thread.");
+            mainThread = new Thread(() => startClient());
             mainThread.Start();
         }
     }

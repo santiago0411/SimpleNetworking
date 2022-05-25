@@ -6,8 +6,6 @@ namespace SimpleNetworking.Server
 {
     internal class ServerTcp
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(ServerTcp));
-
         public TcpClient Socket { get; private set; }
 
         private NetworkStream stream;
@@ -27,7 +25,7 @@ namespace SimpleNetworking.Server
         {
             try
             {
-                log.Debug("Connecting TCP client...");
+                serverClient.Logger.Debug("Connecting TCP client...");
 
                 Socket = socket;
                 Socket.ReceiveBufferSize = options.ReceiveDataBufferSize;
@@ -42,11 +40,11 @@ namespace SimpleNetworking.Server
 
                 stream.BeginRead(receiveBuffer, 0, options.ReceiveDataBufferSize, ReceiveCallback, null);
 
-                log.Debug("Successfully connected client through TCP.");
+                serverClient.Logger.Debug("Successfully connected client through TCP.");
             }
             catch (Exception ex)
             {
-                log.Error($"There was an error trying to establish a TCP connection to the client with id: {serverClient.Id}. The TCP socket of this client will be closed.", ex);
+                serverClient.Logger.Error($"There was an error trying to establish a TCP connection to the client with id: {serverClient.Id}. The TCP socket of this client will be closed.\n{ex}");
                 serverClient.Disconnect(false);
                 options.NetworkOperationFailedCallback?.Invoke(serverClient.ClientInfo, FailedOperation.ConnectTcp, ex);
             }
@@ -69,7 +67,7 @@ namespace SimpleNetworking.Server
 
             serverClient.ClientInfo.HasActiveTcpConnection = false;
 
-            log.Info("TCP client socket has been disconnected and closed.");
+            serverClient.Logger.Info("TCP client socket has been disconnected and closed.");
 
 
             if (invokeCallback)
@@ -85,11 +83,11 @@ namespace SimpleNetworking.Server
             }
             catch (Exception ex)
             {
-                log.Error($"There was an error trying to send TCP data to the client with id: {serverClient.Id}.", ex);
+                serverClient.Logger.Error($"There was an error trying to send TCP data to the client with id: {serverClient.Id}.\n{ex}");
 
                 if (options.DisconnectClientOnError)
                 {
-                    log.Info($"The client will be disconnected.");
+                    serverClient.Logger.Info($"The client will be disconnected.");
                     serverClient.Disconnect();
                 }
 
@@ -101,38 +99,38 @@ namespace SimpleNetworking.Server
         {
             try
             {
-                log.Debug("New TCP data received.");
+                serverClient.Logger.Debug("New TCP data received.");
 
                 int byteLength = stream.EndRead(result);
 
                 if (byteLength <= 0)
                 {
-                    log.Warn("The received TCP data contains no bytes. Disconnecting client...");
+                    serverClient.Logger.Warn("The received TCP data contains no bytes. Disconnecting client...");
                     serverClient.Disconnect();
                     return;
                 }
 
-                log.Debug("Preparting data to be processed...");
+                serverClient.Logger.Debug("Preparing data to be processed...");
                 byte[] data = new byte[byteLength];
                 Array.Copy(receiveBuffer, data, byteLength);
 
-                log.Debug($"Raw data is [{BitConverter.ToString(data).Replace("-", "")}].");
+                serverClient.Logger.Debug($"Raw data is [{BitConverter.ToString(data).Replace("-", "")}].");
 
-                receivedData.Reset(TcpDataHandler.HandleData(serverClient.Id, data, receivedData, serverDataReceivedCallback: options.DataReceivedCallback));
+                receivedData.Reset(TcpDataHandler.HandleData(serverClient.Id, data, receivedData, serverClient.Logger, serverDataReceivedCallback: options.DataReceivedCallback));
                 stream.BeginRead(receiveBuffer, 0, options.ReceiveDataBufferSize, ReceiveCallback, null);
             }
             catch (System.IO.IOException)
             {
-                log.Info("The socket has been closed by the client.");
+                serverClient.Logger.Info("The socket has been closed by the client.");
                 serverClient.Disconnect();
             }
             catch (Exception ex)
             {
-                log.Error($"There was an error trying to receive TCP data from the client with id: {serverClient.Id}.", ex);
+                serverClient.Logger.Error($"There was an error trying to receive TCP data from the client with id: {serverClient.Id}.\n{ex}");
 
                 if (options.DisconnectClientOnError)
                 {
-                    log.Info($"The client will be disconnected.");
+                    serverClient.Logger.Info($"The client will be disconnected.");
                     serverClient.Disconnect();
                 }
 

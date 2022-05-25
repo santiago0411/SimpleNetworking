@@ -16,8 +16,6 @@ namespace SimpleNetworking.Server
 
     public sealed class Server
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(Server));
-
         /// <summary>The port this server is listening on.</summary>
         public ushort Port => Options.Port;
 
@@ -26,6 +24,7 @@ namespace SimpleNetworking.Server
 
         internal UdpClient UdpListener { get; private set; }
         internal ServerOptions Options { get; }
+        internal InternalLogger Logger { get; private set; }
 
         private bool running;
         
@@ -85,7 +84,12 @@ namespace SimpleNetworking.Server
             Options = options;
             idAssigner = new ServerClientsIdAssigner(Options.MaxClients);
 
-            LoggerConfig.CheckLoggerConfig(options.InternalLoggingLevel);
+            Logger = new InternalLogger(options.Logger);
+        }
+
+        public void SetLogger(ILogger logger)
+        {
+            Logger = new InternalLogger(logger);
         }
 
         /// <summary>Launches the main thread and prompts the server to start listening for connections using the selected protocols.</summary>
@@ -93,11 +97,11 @@ namespace SimpleNetworking.Server
         {
             StartThread(() =>
             {
-                log.Info($"Starting server using protocol: '{Options.Protocol}' on port: {Options.Port}.");
+                Logger.Info($"Starting server using protocol: '{Options.Protocol}' on port: {Options.Port}.");
 
                 if (Options.Protocol != ServerProtocol.Udp)
                 {
-                    log.Info("Starting TCP listener...");
+                    Logger.Info("Starting TCP listener...");
                     tcpListener = new TcpListener(Options.IPAddress, Port);
                     tcpListener.Start();
                     tcpListener.BeginAcceptTcpClient(TcpConnectCallback, null);
@@ -105,7 +109,7 @@ namespace SimpleNetworking.Server
 
                 if (Options.Protocol != ServerProtocol.Tcp)
                 {
-                    log.Info("Starting UDP listener...");
+                    Logger.Info("Starting UDP listener...");
                     UdpListener = new UdpClient(Port);
                     UdpListener.BeginReceive(UdpReceiveCallback, null);
                 }
@@ -115,7 +119,7 @@ namespace SimpleNetworking.Server
         /// <summary>Stops both the TCP and UDP listeners.</summary>
         public void Stop()
         {
-            log.Info("Disconnecting all clients.");
+            Logger.Info("Disconnecting all clients.");
             
             var clientsList = new List<ServerClient>(clients.Values);
             
@@ -125,13 +129,13 @@ namespace SimpleNetworking.Server
                 idAssigner.FreeId(client.Id);
             }
 
-            log.Info("Stopping TCP and UDP listeners...");
+            Logger.Info("Stopping TCP and UDP listeners...");
             tcpListener?.Stop();
             UdpListener?.Close();
-            log.Info("TCP and UDP listeners have been stopped.");
+            Logger.Info("TCP and UDP listeners have been stopped.");
 
             running = false;
-            log.Info("Stopping main thread and joining...");
+            Logger.Info("Stopping main thread and joining...");
             internalThread.Join();
         }
 
@@ -159,7 +163,7 @@ namespace SimpleNetworking.Server
         {
             if (clients.TryGetValue(clientId, out ServerClient client))
             {
-                log.Debug($"Disconnecting client with id: {clientId} on protocol: {protocol}");
+                Logger.Debug($"Disconnecting client with id: {clientId} on protocol: {protocol}");
 
                 switch (protocol)
                 {
@@ -193,16 +197,16 @@ namespace SimpleNetworking.Server
             {
                 if (!client.IsConnectedTcp())
                 {
-                    log.Error($"Cannot send TCP data to client: {toClient} because it doesn't have an active TCP connection.");
+                    Logger.Error($"Cannot send TCP data to client: {toClient} because it doesn't have an active TCP connection.");
                     return;
                 }
 
-                log.Debug($"Sending TCP data to client with id: {toClient}.");
+                Logger.Debug($"Sending TCP data to client with id: {toClient}.");
                 client.Tcp.SendData(packet);
                 return;
             }
 
-            log.Error($"Cannot send TCP data to client: {toClient} because it doesn't exist.");
+            Logger.Error($"Cannot send TCP data to client: {toClient} because it doesn't exist.");
         }
 
         /// <summary>Sends a packet via TCP to all the connected clients.</summary>
@@ -213,7 +217,7 @@ namespace SimpleNetworking.Server
             if (Options.Protocol == ServerProtocol.Udp)
                 throw new InvalidProtocolException("Cannot send TCP data the server protocol is set to UDP only.");
 
-            log.Debug("Sending TCP data to all connected clients.");
+            Logger.Debug("Sending TCP data to all connected clients.");
 
             foreach (var client in clients.Values)
             {
@@ -231,7 +235,7 @@ namespace SimpleNetworking.Server
             if (Options.Protocol == ServerProtocol.Udp)
                 throw new InvalidProtocolException("Cannot send TCP data the server protocol is set to UDP only.");
 
-            log.Debug($"Sending TCP data to all connected clients except client: {exceptClient}.");
+            Logger.Debug($"Sending TCP data to all connected clients except client: {exceptClient}.");
 
             foreach (var client in clients.Values)
             {
@@ -251,12 +255,12 @@ namespace SimpleNetworking.Server
 
             if (clients.TryGetValue(toClient, out ServerClient client))
             {
-                log.Debug($"Sending UDP data to client with id: {toClient}.");
+                Logger.Debug($"Sending UDP data to client with id: {toClient}.");
                 client.Udp.SendData(packet);
                 return;
             }
 
-            log.Error($"Cannot send UDP data to client: {toClient} because it doesn't exist.");
+            Logger.Error($"Cannot send UDP data to client: {toClient} because it doesn't exist.");
         }
 
         /// <summary>Sends a packet via UDP to all the connected clients.</summary>
@@ -267,7 +271,7 @@ namespace SimpleNetworking.Server
             if (Options.Protocol == ServerProtocol.Tcp)
                 throw new InvalidProtocolException("Cannot send UDP data the server protocol is set to TCP only.");
 
-            log.Debug("Sending UDP data to all connected clients.");
+            Logger.Debug("Sending UDP data to all connected clients.");
 
             foreach (var client in clients.Values)
                 client.Udp.SendData(packet);
@@ -282,7 +286,7 @@ namespace SimpleNetworking.Server
             if (Options.Protocol == ServerProtocol.Tcp)
                 throw new InvalidProtocolException("Cannot send UDP data the server protocol is set to TCP only.");
 
-            log.Debug($"Sending UDP data to all connected clients except client: {exceptClient}.");
+            Logger.Debug($"Sending UDP data to all connected clients except client: {exceptClient}.");
 
             foreach (var client in clients.Values)
             {
@@ -293,7 +297,7 @@ namespace SimpleNetworking.Server
 
         private void StartThread(Action startServer)
         {
-            log.Debug("Starting new thread.");
+            Logger.Debug("Starting new thread.");
             internalThread = new Thread(() =>
             {
                 startServer();
@@ -316,15 +320,15 @@ namespace SimpleNetworking.Server
 
         private void TcpConnectCallback(IAsyncResult result)
         {
-            log.Debug("New TCP connection received.");
+            Logger.Debug("New TCP connection received.");
 
             TcpClient client = tcpListener.EndAcceptTcpClient(result);
             tcpListener.BeginAcceptTcpClient(TcpConnectCallback, null);
 
             if (!idAssigner.FindAvailableId(out int availableId))
             {
-                log.Debug("Could not find an available id to create a client. Server is full!");
-                log.Debug("Invoking ServerIsFullCallback.");
+                Logger.Debug("Could not find an available id to create a client. Server is full!");
+                Logger.Debug("Invoking ServerIsFullCallback.");
                 Options.ServerIsFullCallback?.Invoke();
                 client.Close();
                 client.Dispose();
@@ -344,12 +348,12 @@ namespace SimpleNetworking.Server
 
             client.Close();
             client.Dispose();
-            log.Info("The new client has been refused by the ClientConnectCallback and the connection has been closed.");
+            Logger.Info("The new client has been refused by the ClientConnectCallback and the connection has been closed.");
         }
 
         private bool ApproveNewConnection(ClientInfo clientInfo)
         {
-            log.Debug("Invoking ClientConnectedCallback.");
+            Logger.Debug("Invoking ClientConnectedCallback.");
             bool? accepted = Options.ClientConnectedCallback?.Invoke(clientInfo);
             return accepted ?? true;
         }
@@ -360,13 +364,13 @@ namespace SimpleNetworking.Server
             serverClient.ClientInfo.HasActiveTcpConnection = true;
             clients.Add(serverClient.Id, serverClient);
 
-            log.Debug("Invoking ClientAcceptedCallback.");
+            Logger.Debug("Invoking ClientAcceptedCallback.");
             Options.ClientConnectionEstablishedCallback?.Invoke(serverClient.ClientInfo);
         }
 
         private void UdpReceiveCallback(IAsyncResult result)
         {
-            log.Debug("New UDP data received.");
+            Logger.Debug("New UDP data received.");
 
             IPEndPoint clientEndPoint; 
             byte[] data;
@@ -379,7 +383,7 @@ namespace SimpleNetworking.Server
             }
             catch (Exception ex)
             {
-                log.Error("Error receiving UDP data.", ex);
+                Logger.Error($"Error receiving UDP data.\n{ex}");
                 return;
             }
 
@@ -387,17 +391,17 @@ namespace SimpleNetworking.Server
 
             if (!Options.RequireClientToSendIdInUdpData)
             {
-                log.Debug("RequireClientToSendIdInUdpData is set to false, data will not be processed because it can't be identified.");
-                log.Debug("Invoking UDPDataReceivedCallback");
+                Logger.Debug("RequireClientToSendIdInUdpData is set to false, data will not be processed because it can't be identified.");
+                Logger.Debug("Invoking UDPDataReceivedCallback");
                 Options.UDPDataReceivedCallback?.Invoke(packet);
                 return;
             }
 
-            log.Debug("Reading client id from data received.");
+            Logger.Debug("Reading client id from data received.");
 
             if (data.Length < 4)
             {
-                log.Warn("Failed to read client id, data does not have enough bytes. Packet will not be processed.");
+                Logger.Warn("Failed to read client id, data does not have enough bytes. Packet will not be processed.");
                 return;
             }
 
@@ -407,7 +411,7 @@ namespace SimpleNetworking.Server
             {
                 if (serverClient.ClientInfo is null)
                 {
-                    log.Debug($"There is no client {clientId} with an active TCP connection.");
+                    Logger.Debug($"There is no client {clientId} with an active TCP connection.");
                     return;
                 }
 
@@ -415,11 +419,11 @@ namespace SimpleNetworking.Server
                 {
                     if (!serverClient.ClientInfo.TcpEndPoint.Address.Equals(clientEndPoint.Address))
                     {
-                        log.Warn($"{clientEndPoint} is trying to establish a UDP connection impersonating client: {serverClient.Id} with IP: {serverClient.ClientInfo.TcpEndPoint.Address}.");
+                        Logger.Warn($"{clientEndPoint} is trying to establish a UDP connection impersonating client: {serverClient.Id} with IP: {serverClient.ClientInfo.TcpEndPoint.Address}.");
                         return;
                     }
 
-                    log.Debug($"First packet ever received from client {clientId}, setting EndPoint.");
+                    Logger.Debug($"First packet ever received from client {clientId}, setting EndPoint.");
                     serverClient.Udp.Connect(clientEndPoint);
                     serverClient.ClientInfo.HasActiveUdpConnection = true;
                     serverClient.ClientInfo.UdpEndPoint = clientEndPoint;
@@ -431,11 +435,11 @@ namespace SimpleNetworking.Server
                     return;
                 }
 
-                log.Warn($"{clientEndPoint.Address} tried to impersonate another client by sending a false id: {clientId}.");
+                Logger.Warn($"{clientEndPoint.Address} tried to impersonate another client by sending a false id: {clientId}.");
                 return;
             }
 
-            log.Debug($"No client with id: {clientId}");
+            Logger.Debug($"No client with id: {clientId}");
         }
 
         private class ServerClientsIdAssigner
