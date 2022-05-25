@@ -5,7 +5,7 @@ namespace SimpleNetworking.Server
 {
     public sealed class ServerOptions
     {
-        /// <summary>(OPTIONAL) The IPAddreses to listen to incoming connections on. The default is any (0.0.0.0).</summary>
+        /// <summary>(OPTIONAL) The IP Addresses to listen to incoming connections on. The default is any (0.0.0.0).</summary>
         public System.Net.IPAddress IPAddress { get; set; } = System.Net.IPAddress.Any;
 
         /// <summary>The port to listen on.</summary>
@@ -20,10 +20,10 @@ namespace SimpleNetworking.Server
         /// <summary>(OPTIONAL) The size of the socket send buffer. The default value is 8192 bytes.</summary>
         public int SendDataBufferSize { get; set; } = 8192;
 
-        /// <summary>(OPTIONAL) The time in MILISECONDS after the receive data operation will time out. The default value is 0 which means no timeout.</summary>
+        /// <summary>(OPTIONAL) The time in MILLISECONDS after the receive data operation will time out. The default value is 0 which means no timeout.</summary>
         public int ReceiveDataTimeout { get; set; } = 0;
 
-        /// <summary>(OPTIONAL) The time in MILISECONDS after the send data operation will time out. The default value is 0 which means no timeout.</summary>
+        /// <summary>(OPTIONAL) The time in MILLISECONDS after the send data operation will time out. The default value is 0 which means no timeout.</summary>
         public int SendDataTimeout { get; set; } = 0;
 
         /// <summary>The protocol(s) to use. The default value is both Tcp and Udp.</summary>
@@ -42,10 +42,10 @@ namespace SimpleNetworking.Server
         public ILogger Logger { get; set; }
 
         /// <summary>Callback to execute when a new packet is received from a client. Arg1 is the client's assigned Id. Arg2 is the received data.</summary>
-        public Action<int, Utils.Packet> DataReceivedCallback { get; set; } = null;
+        public Action<ClientInfo, Packet> DataReceivedCallback { get; set; } = null;
 
         /// <summary>(OPTIONAL) Callback to execute when the RequireClientToSendIdInUdpData flag is set to FALSE and new UDP data that can't be identified is received. Arg1 is the received data.</summary>
-        public Action<Utils.Packet> UDPDataReceivedCallback { get; set; } = null;
+        public Action<Packet> UDPDataReceivedCallback { get; set; } = null;
 
         /// <summary>(OPTIONAL) Callback to execute when a new client connects to the server. Arg1 is the info of the client. Returning false will refuse the connection and disconnect the client.</summary>
         public Func<ClientInfo, bool> ClientConnectedCallback { get; set; } = null;

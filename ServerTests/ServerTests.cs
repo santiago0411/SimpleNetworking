@@ -1,6 +1,7 @@
 ﻿using System;
 using SimpleNetworking.Server;
 using SimpleNetworking.Utils;
+using FailedOperation = SimpleNetworking.Server.FailedOperation;
 
 namespace ServerTests
 {
@@ -70,9 +71,9 @@ namespace ServerTests
             logger.Info($"Client {clientInfo.AssignedId} with ip {clientInfo.IpAddress} has disconnected.");
         }
 
-        private static void OnDataReceived(int clientId, Packet packet)
+        private static void OnDataReceived(ClientInfo client, Packet packet)
         {
-            logger.Info($"Received message from client: {clientId} - {packet.ReadString()}");
+            logger.Info($"Received message from client: {client.AssignedId} - {packet.ReadString()}");
         }
 
         private static void OnReceiveUdpData(Packet packet)
