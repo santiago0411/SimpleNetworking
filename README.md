@@ -42,7 +42,7 @@ finally
 
 ## Packet Sending
 
-The **Packet** class **Write()** function contains overloads for writing all primitive types and also strings. *Strings will be written as UTF8 bytes. First the amount of the bytes will be written and then the bytes itself.*
+The **Packet** class **Write()** function contains overloads for writing all primitive types and also strings. *Strings will be written as UTF8 bytes. First the amount of the bytes will be written and then the bytes themselves.*
 ```c#
 using var packet = new Packet();
 packet.Write(1);
