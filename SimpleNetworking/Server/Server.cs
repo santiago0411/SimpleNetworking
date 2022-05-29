@@ -31,7 +31,7 @@ namespace SimpleNetworking.Server
         private readonly Dictionary<int, ServerClient> clients = new Dictionary<int, ServerClient>();
         private readonly ServerClientsIdAssigner idAssigner;
 
-        public Server(ushort port, Action<int, Packet> dataReceivedCallback)
+        public Server(ushort port, Action<ClientInfo, Packet> dataReceivedCallback)
             : this(new ServerOptions
             {
                 Port = port,

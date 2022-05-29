@@ -67,7 +67,7 @@ namespace SimpleNetworking.Server
             serverClient.Logger.Debug("Creating new packet with the received UDP data and calling DataReceivedCallback.");
 
             using var packet = new Packet(packetBytes);
-            options.DataReceivedCallback(serverClient.Id, packet);
+            options.DataReceivedCallback(serverClient.ClientInfo, packet);
         }
     }
 }

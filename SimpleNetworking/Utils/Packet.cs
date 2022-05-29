@@ -148,12 +148,32 @@ namespace SimpleNetworking.Utils
         {
             buffer.AddRange(BitConverter.GetBytes(value));
         }
+        /// <summary>Adds a ulong to the packet.</summary>
+        /// <param name="value">The ulong to add.</param>
+        public void Write(ulong value)
+        {
+            buffer.AddRange(BitConverter.GetBytes(value));
+        }
         /// <summary>Adds a float to the packet.</summary>
         /// <param name="value">The float to add.</param>
         public void Write(float value)
         {
             buffer.AddRange(BitConverter.GetBytes(value));
         }
+        /// <summary>Adds a double to the packet.</summary>
+        /// <param name="value">The double to add.</param>
+        public void Write(double value)
+        {
+            buffer.AddRange(BitConverter.GetBytes(value));
+        }
+        /// <summary>Adds a decimal to the packet.</summary>
+        /// <param name="value">The decimal to add.</param>
+        public void Write(decimal value)
+        {
+            var ints = decimal.GetBits(value);
+            foreach (var i in ints)
+                buffer.AddRange(BitConverter.GetBytes(i));
+        }        
         /// <summary>Adds a bool to the packet.</summary>
         /// <param name="value">The bool to add.</param>
         public void Write(bool value)
@@ -237,7 +257,14 @@ namespace SimpleNetworking.Utils
             }
             return value; // Return the int
         }
-
+        
+        /// <summary>Reads a ulong from the packet.</summary>
+        /// <param name="moveReadPos">Whether or not to move the buffer's read position.</param>
+        public ulong ReadULong(bool moveReadPos = true)
+        {
+            return (ulong)ReadLong(moveReadPos);
+        }
+        
         /// <summary>Reads a long from the packet.</summary>
         /// <param name="moveReadPos">Whether or not to move the buffer's read position.</param>
         public long ReadLong(bool moveReadPos = true)
@@ -262,6 +289,30 @@ namespace SimpleNetworking.Utils
                 readPos += 4; // Increase readPos by 4
             }
             return value; // Return the float
+        }
+        
+        /// <summary>Reads a double from the packet.</summary>
+        /// <param name="moveReadPos">Whether or not to move the buffer's read position.</param>
+        public double ReadDouble(bool moveReadPos = true)
+        {
+            double value = BitConverter.ToDouble(readableBuffer, readPos); // Convert the bytes to a float
+            if (moveReadPos)
+            {
+                // If moveReadPos is true
+                readPos += 8; // Increase readPos by 4
+            }
+            return value; // Return the double
+        }
+        
+        /// <summary>Reads a decimal from the packet.</summary>
+        /// <param name="moveReadPos">Whether or not to move the buffer's read position.</param>
+        public decimal ReadDecimal(bool moveReadPos = true)
+        {
+            var ints = new int[4]; // Allocate an array of 4 ints
+            for (var i = 0; i < 4; i++)
+                ints[i] = ReadInt(); // Read the 4 ints
+            
+            return new decimal(ints); // Convert them and return the decimal
         }
 
         /// <summary>Reads a bool from the packet.</summary>

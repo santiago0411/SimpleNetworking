@@ -1,10 +1,11 @@
 ﻿using System;
+using SimpleNetworking.Server;
 
 namespace SimpleNetworking.Utils
 {
     internal class TcpDataHandler
     {
-        public static bool HandleData(int clientId, byte[] data, Packet receivedData, InternalLogger logger, Action<int, Packet> serverDataReceivedCallback = null, Action<Packet> clientDataReceivedCallback = null)
+        public static bool HandleData(byte[] data, Packet receivedData, InternalLogger logger, Action<ClientInfo, Packet> serverDataReceivedCallback = null, Action<Packet> clientDataReceivedCallback = null, ClientInfo client = null)
         {
             logger.Debug("Processing new TCP data...");
             receivedData.SetBytes(data);
@@ -27,7 +28,7 @@ namespace SimpleNetworking.Utils
                 logger.Debug("Creating new packet with the received TCP data and calling DataReceivedCallback.");
 
                 using var packet = new Packet(packetBytes);
-                serverDataReceivedCallback?.Invoke(clientId, packet);
+                serverDataReceivedCallback?.Invoke(client, packet);
                 clientDataReceivedCallback?.Invoke(packet);
 
                 packetLength = 0;

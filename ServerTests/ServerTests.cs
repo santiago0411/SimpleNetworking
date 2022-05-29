@@ -57,7 +57,6 @@ namespace ServerTests
             return true;
         }
 
-
         private static void OnClientAccepted(ClientInfo clientInfo)
         {
             using var packet = new Packet();

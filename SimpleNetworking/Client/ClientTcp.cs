@@ -113,7 +113,7 @@ namespace SimpleNetworking.Client
 
                 client.Logger.Debug($"Raw data is [{BitConverter.ToString(data).Replace("-", "")}].");
 
-                receivedData.Reset(TcpDataHandler.HandleData(client.Id, data, receivedData, client.Logger, clientDataReceivedCallback: client.Options.DataReceivedCallback));
+                receivedData.Reset(TcpDataHandler.HandleData(data, receivedData, client.Logger, clientDataReceivedCallback: client.Options.DataReceivedCallback));
                 stream.BeginRead(receiveBuffer, 0, client.Options.ReceiveDataBufferSize, ReceiveCallback, null);
             }
             catch (System.IO.IOException)
